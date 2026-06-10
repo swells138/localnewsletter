@@ -7,7 +7,7 @@ A local events directory MVP for Northeast Ohio, focused first on North Ridgevil
 - Next.js App Router
 - TypeScript
 - Tailwind CSS
-- Supabase database/auth/storage-ready architecture
+- Neon Postgres database architecture
 - Vercel-ready environment configuration
 
 ## Local Setup
@@ -30,26 +30,27 @@ A local events directory MVP for Northeast Ohio, focused first on North Ridgevil
    npm run dev
    ```
 
-The app renders with built-in sample data when Supabase variables are empty.
+The app renders with built-in sample data when `DATABASE_URL` is empty.
 
-## Supabase Setup
+## Neon Setup
 
-1. Create a Supabase project.
-2. Run `supabase/schema.sql` in the SQL editor.
-3. Add `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` to `.env.local`.
-4. Seed data:
+1. Create a Neon project.
+2. Copy your Neon pooled connection string into `DATABASE_URL`.
+3. Run `db/schema.sql` in the Neon SQL editor.
+4. Add `DATABASE_URL` to `.env.local`.
+5. Seed data:
 
    ```bash
    npm run seed
    ```
 
-Public pages read published events. Route handlers use the service role key for event submissions, newsletter signups, and admin actions.
+Public pages read published events. Route handlers use `DATABASE_URL` for event submissions, newsletter signups, admin actions, and imports.
 
 ## Admin
 
 Set `ADMIN_PASSWORD` in `.env.local`. Visit `/admin/login`, enter the password, then open `/admin`.
 
-The current admin auth is intentionally simple for the MVP. It is structured so Supabase Auth can replace the token gate later.
+The current admin auth is intentionally simple for the MVP. It is structured so a full auth system can replace the token gate later.
 
 ## Event Import Bot
 
@@ -63,7 +64,7 @@ The admin dashboard includes a review-first event finder:
 
 The bot first looks for Schema.org `Event` JSON-LD on source pages. If `OPENAI_API_KEY` and `OPENAI_MODEL` are set, it can also use AI extraction for messy pages. The bot does not publish events automatically.
 
-For an existing Supabase database, run the SQL in `supabase/migrations/20260610_event_imports.sql`.
+For an existing Neon database, run the SQL in `db/migrations/20260610_event_imports.sql`.
 
 ## Core Routes
 
@@ -82,9 +83,7 @@ For an existing Supabase database, run the SQL in `supabase/migrations/20260610_
 Add these environment variables in Vercel:
 
 - `NEXT_PUBLIC_SITE_URL`
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY`
+- `DATABASE_URL`
 - `ADMIN_ACCESS_TOKEN`
 - `ADMIN_PASSWORD`
 - `OPENAI_API_KEY`
@@ -98,8 +97,8 @@ npm run build
 
 ## Future TODOs
 
-- Replace token admin gate with Supabase Auth roles.
-- Add event image uploads with Supabase Storage.
+- Replace token admin gate with real admin auth.
+- Add event image uploads with object storage.
 - Add automated event imports from approved source URLs.
 - Add paid featured listings and sponsor placements.
 - Add weekly newsletter sending through Mailchimp, ConvertKit, or Resend.

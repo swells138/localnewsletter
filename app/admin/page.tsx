@@ -34,9 +34,9 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
           Bot run complete: checked {params.checked} source{params.checked === "1" ? "" : "s"}, created {params.created} pending card{params.created === "1" ? "" : "s"}, skipped {params.skipped}, errors {params.errors}.
         </div>
       )}
-      {params.import === "needs-supabase" && (
+      {params.import === "needs-database" && (
         <div className="rounded border border-amber/25 bg-amber/10 p-3 text-sm font-medium text-ink">
-          Add Supabase environment variables before running the bot. Local sample data is read-only.
+          Add your Neon `DATABASE_URL` before running the bot. Local sample data is read-only.
         </div>
       )}
       <section className="grid gap-4 lg:grid-cols-[1fr_340px]">

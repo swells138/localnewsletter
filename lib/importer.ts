@@ -1,5 +1,5 @@
 import { addHours, parseISO } from "date-fns";
-import { createSupabaseAdminClient } from "@/lib/supabase";
+import { getSql } from "@/lib/db";
 import type { Category, City, EventSourceWithRelations } from "@/lib/types";
 
 type ImportedCandidate = {
@@ -180,7 +180,7 @@ const pickCategory = (candidate: ImportedCandidate, fallback: Category | null, c
 };
 
 export const runEventImport = async (sources: EventSourceWithRelations[], cities: City[], categories: Category[]): Promise<ImportResult> => {
-  const supabase = createSupabaseAdminClient();
+  const sql = getSql();
   const result: ImportResult = { checked: 0, created: 0, skipped: 0, errors: [] };
 
   for (const source of sources.filter((item) => item.is_active)) {
@@ -225,11 +225,7 @@ export const runEventImport = async (sources: EventSourceWithRelations[], cities
 
         const eventUrl = candidate.event_url?.startsWith("http") ? candidate.event_url : source.url;
         const slugBase = slugify(`${title}-${city.slug}-${start.slice(0, 10)}`);
-        const { data: existing } = await supabase
-          .from("events")
-          .select("id")
-          .or(`event_url.eq.${eventUrl},slug.eq.${slugBase}`)
-          .limit(1);
+        const existing = await sql`select id from events where event_url = ${eventUrl} or slug = ${slugBase} limit 1`;
 
         if (existing?.length) {
           result.skipped += 1;
@@ -237,39 +233,29 @@ export const runEventImport = async (sources: EventSourceWithRelations[], cities
         }
 
         const end = toIso(candidate.end_datetime) ?? addHours(parseISO(start), 2).toISOString();
-        const { error } = await supabase.from("events").insert({
-          title,
-          slug: slugBase,
-          description: candidate.description?.trim() || `Imported event from ${source.name}. Review details before publishing.`,
-          start_datetime: start,
-          end_datetime: end,
-          venue_name: candidate.venue_name?.trim() || "Venue to confirm",
-          address: candidate.address?.trim() || `${city.name}, ${city.state}`,
-          city_id: city.id,
-          category_id: category.id,
-          price_text: candidate.price_text?.trim() || "See event page",
-          is_free: Boolean(candidate.is_free),
-          is_family_friendly: Boolean(candidate.is_family_friendly),
-          event_url: eventUrl,
-          organizer_name: candidate.organizer_name?.trim() || source.name,
-          organizer_email: "imports@example.com",
-          image_url: candidate.image_url || null,
-          status: "pending",
-          is_featured: false,
-          source_url: source.url,
-          imported_at: new Date().toISOString(),
-          import_confidence: candidate.confidence ?? 0.7,
-          raw_import_data: candidate
-        });
-
-        if (error) {
-          result.errors.push(`${title}: ${error.message}`);
-        } else {
+        try {
+          await sql`
+            insert into events (
+              title, slug, description, start_datetime, end_datetime, venue_name, address,
+              city_id, category_id, price_text, is_free, is_family_friendly, event_url,
+              organizer_name, organizer_email, image_url, status, is_featured, source_url,
+              imported_at, import_confidence, raw_import_data
+            ) values (
+              ${title}, ${slugBase}, ${candidate.description?.trim() || `Imported event from ${source.name}. Review details before publishing.`},
+              ${start}, ${end}, ${candidate.venue_name?.trim() || "Venue to confirm"}, ${candidate.address?.trim() || `${city.name}, ${city.state}`},
+              ${city.id}, ${category.id}, ${candidate.price_text?.trim() || "See event page"}, ${Boolean(candidate.is_free)},
+              ${Boolean(candidate.is_family_friendly)}, ${eventUrl}, ${candidate.organizer_name?.trim() || source.name},
+              ${"imports@example.com"}, ${candidate.image_url || null}, ${"pending"}, ${false}, ${source.url},
+              ${new Date().toISOString()}, ${candidate.confidence ?? 0.7}, ${JSON.stringify(candidate)}::jsonb
+            )
+          `;
           result.created += 1;
+        } catch (error) {
+          result.errors.push(`${title}: ${error instanceof Error ? error.message : "insert failed"}`);
         }
       }
 
-      await supabase.from("event_sources").update({ last_checked_at: new Date().toISOString() }).eq("id", source.id);
+      await sql`update event_sources set last_checked_at = now() where id = ${source.id}`;
     } catch (error) {
       result.errors.push(`${source.name}: ${error instanceof Error ? error.message : "unknown error"}`);
     }

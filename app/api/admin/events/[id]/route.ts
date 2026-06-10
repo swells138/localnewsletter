@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { isAdminRequest } from "@/lib/admin/auth";
-import { createSupabaseAdminClient, hasSupabaseConfig } from "@/lib/supabase";
+import { getSql, hasDatabaseConfig } from "@/lib/db";
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!(await isAdminRequest())) return NextResponse.redirect(new URL("/admin/login", request.url));
@@ -8,16 +8,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const form = await request.formData();
   const action = String(form.get("action") ?? "");
 
-  if (hasSupabaseConfig && process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    const supabase = createSupabaseAdminClient();
+  if (hasDatabaseConfig) {
+    const sql = getSql();
     if (action === "delete") {
-      await supabase.from("events").delete().eq("id", id);
+      await sql`delete from events where id = ${id}`;
     } else if (action === "approve") {
-      await supabase.from("events").update({ status: "published" }).eq("id", id);
+      await sql`update events set status = 'published' where id = ${id}`;
     } else if (action === "reject") {
-      await supabase.from("events").update({ status: "rejected" }).eq("id", id);
+      await sql`update events set status = 'rejected' where id = ${id}`;
     } else if (action === "feature") {
-      await supabase.from("events").update({ is_featured: true }).eq("id", id);
+      await sql`update events set is_featured = true where id = ${id}`;
     }
   }
 

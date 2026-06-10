@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { isAdminRequest } from "@/lib/admin/auth";
-import { createSupabaseAdminClient, hasSupabaseConfig } from "@/lib/supabase";
+import { getSql, hasDatabaseConfig } from "@/lib/db";
 
 const sourceSchema = z.object({
   name: z.string().min(2),
@@ -13,8 +13,8 @@ const sourceSchema = z.object({
 
 export async function POST(request: Request) {
   if (!(await isAdminRequest())) return NextResponse.redirect(new URL("/admin/login", request.url));
-  if (!hasSupabaseConfig || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    return NextResponse.redirect(new URL("/admin?source=needs-supabase", request.url));
+  if (!hasDatabaseConfig) {
+    return NextResponse.redirect(new URL("/admin?source=needs-database", request.url));
   }
 
   const form = await request.formData();
@@ -28,7 +28,15 @@ export async function POST(request: Request) {
 
   if (!parsed.success) return NextResponse.redirect(new URL("/admin?source=invalid", request.url));
 
-  const supabase = createSupabaseAdminClient();
-  await supabase.from("event_sources").upsert(parsed.data, { onConflict: "url" });
+  await getSql()`
+    insert into event_sources (name, url, city_id, category_id, notes)
+    values (${parsed.data.name}, ${parsed.data.url}, ${parsed.data.city_id}, ${parsed.data.category_id}, ${parsed.data.notes})
+    on conflict (url) do update set
+      name = excluded.name,
+      city_id = excluded.city_id,
+      category_id = excluded.category_id,
+      notes = excluded.notes,
+      updated_at = now()
+  `;
   return NextResponse.redirect(new URL("/admin?source=added", request.url));
 }

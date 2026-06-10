@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { createSupabaseAdminClient, hasSupabaseConfig } from "@/lib/supabase";
+import { getSql, hasDatabaseConfig } from "@/lib/db";
 
 const schema = z.object({
   email: z.string().email(),
@@ -20,10 +20,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Enter a valid email address." }, { status: 400 });
   }
 
-  if (hasSupabaseConfig && process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    const supabase = createSupabaseAdminClient();
-    const { error } = await supabase.from("newsletter_subscribers").upsert(parsed.data, { onConflict: "email" });
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (hasDatabaseConfig) {
+    try {
+      await getSql()`
+        insert into newsletter_subscribers (email, preferred_city_id, interests)
+        values (${parsed.data.email}, ${parsed.data.preferred_city_id}, ${parsed.data.interests}::text[])
+        on conflict (email) do update set
+          preferred_city_id = excluded.preferred_city_id,
+          interests = excluded.interests
+      `;
+    } catch (error) {
+      return NextResponse.json({ error: error instanceof Error ? error.message : "Database upsert failed." }, { status: 500 });
+    }
   }
 
   return NextResponse.redirect(new URL("/?newsletter=1", request.url));

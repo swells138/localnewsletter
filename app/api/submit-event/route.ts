@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { createSupabaseAdminClient, hasSupabaseConfig } from "@/lib/supabase";
+import { getSql, hasDatabaseConfig } from "@/lib/db";
 
 const schema = z.object({
   title: z.string().min(3),
@@ -62,10 +62,23 @@ export async function POST(request: Request) {
     is_featured: false
   };
 
-  if (hasSupabaseConfig && process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    const supabase = createSupabaseAdminClient();
-    const { error } = await supabase.from("events").insert(payload);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (hasDatabaseConfig) {
+    try {
+      await getSql()`
+        insert into events (
+          title, slug, description, start_datetime, end_datetime, venue_name, address,
+          city_id, category_id, price_text, is_free, is_family_friendly, event_url,
+          organizer_name, organizer_email, status, is_featured
+        ) values (
+          ${payload.title}, ${payload.slug}, ${payload.description}, ${payload.start_datetime}, ${payload.end_datetime},
+          ${payload.venue_name}, ${payload.address}, ${payload.city_id}, ${payload.category_id}, ${payload.price_text},
+          ${payload.is_free}, ${payload.is_family_friendly}, ${payload.event_url}, ${payload.organizer_name},
+          ${payload.organizer_email}, ${payload.status}, ${payload.is_featured}
+        )
+      `;
+    } catch (error) {
+      return NextResponse.json({ error: error instanceof Error ? error.message : "Database insert failed." }, { status: 500 });
+    }
   }
 
   return NextResponse.redirect(new URL("/submit-event?submitted=1", request.url));

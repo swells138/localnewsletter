@@ -1,24 +1,28 @@
 import { addDays, endOfDay, isWithinInterval, parseISO, startOfDay } from "date-fns";
 import { categories as sampleCategories, cities as sampleCities, events as sampleEvents } from "@/lib/sample-data";
-import { createSupabaseAdminClient, hasSupabaseConfig } from "@/lib/supabase";
+import { getSql, hasDatabaseConfig } from "@/lib/db";
 import type { Category, City, Event, EventFilters, EventSource, EventSourceWithRelations, EventWithRelations } from "@/lib/types";
 
 const siteNow = () => new Date();
 
 export const getCities = async (): Promise<City[]> => {
-  if (!hasSupabaseConfig || !process.env.SUPABASE_SERVICE_ROLE_KEY) return sampleCities;
-  const supabase = createSupabaseAdminClient();
-  const { data, error } = await supabase.from("cities").select("*").order("name");
-  if (error) return sampleCities;
-  return data as City[];
+  if (!hasDatabaseConfig) return sampleCities;
+  try {
+    const rows = await getSql()`select * from cities order by name`;
+    return rows as City[];
+  } catch {
+    return sampleCities;
+  }
 };
 
 export const getCategories = async (): Promise<Category[]> => {
-  if (!hasSupabaseConfig || !process.env.SUPABASE_SERVICE_ROLE_KEY) return sampleCategories;
-  const supabase = createSupabaseAdminClient();
-  const { data, error } = await supabase.from("categories").select("*").order("name");
-  if (error) return sampleCategories;
-  return data as Category[];
+  if (!hasDatabaseConfig) return sampleCategories;
+  try {
+    const rows = await getSql()`select * from categories order by name`;
+    return rows as Category[];
+  } catch {
+    return sampleCategories;
+  }
 };
 
 const joinEvents = (events: Event[], cities: City[], categories: Category[]): EventWithRelations[] =>
@@ -35,16 +39,16 @@ export const getEvents = async (filters: EventFilters = {}, includePending = fal
   const categories = await getCategories();
 
   let rows: Event[];
-  if (!hasSupabaseConfig || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  if (!hasDatabaseConfig) {
     rows = sampleEvents;
   } else {
-    const supabase = createSupabaseAdminClient();
-    const { data, error } = await supabase
-      .from("events")
-      .select("*")
-      .in("status", includePending ? ["pending", "published", "draft", "rejected"] : ["published"])
-      .order("start_datetime", { ascending: true });
-    rows = error ? sampleEvents : (data as Event[]);
+    try {
+      rows = includePending
+        ? ((await getSql()`select * from events where status in ('pending', 'published', 'draft', 'rejected') order by start_datetime asc`) as Event[])
+        : ((await getSql()`select * from events where status = 'published' order by start_datetime asc`) as Event[]);
+    } catch {
+      rows = sampleEvents;
+    }
   }
 
   const start = startOfDay(siteNow());
@@ -85,13 +89,16 @@ export const getCityBySlug = async (slug: string) => (await getCities()).find((c
 export const getCategoryBySlug = async (slug: string) => (await getCategories()).find((category) => category.slug === slug);
 
 export const getEventSources = async (): Promise<EventSourceWithRelations[]> => {
-  if (!hasSupabaseConfig || !process.env.SUPABASE_SERVICE_ROLE_KEY) return [];
+  if (!hasDatabaseConfig) return [];
   const [cities, categories] = await Promise.all([getCities(), getCategories()]);
-  const supabase = createSupabaseAdminClient();
-  const { data, error } = await supabase.from("event_sources").select("*").order("created_at", { ascending: false });
-  if (error) return [];
+  let data: EventSource[];
+  try {
+    data = (await getSql()`select * from event_sources order by created_at desc`) as EventSource[];
+  } catch {
+    return [];
+  }
 
-  return (data as EventSource[]).map((source) => ({
+  return data.map((source) => ({
     ...source,
     city: cities.find((city) => city.id === source.city_id) ?? null,
     category: categories.find((category) => category.id === source.category_id) ?? null
