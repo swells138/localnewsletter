@@ -47,9 +47,23 @@ Public pages read published events. Route handlers use the service role key for 
 
 ## Admin
 
-Set `ADMIN_ACCESS_TOKEN` in `.env.local`. Visit `/admin/login`, enter the token, then open `/admin`.
+Set `ADMIN_PASSWORD` in `.env.local`. Visit `/admin/login`, enter the password, then open `/admin`.
 
 The current admin auth is intentionally simple for the MVP. It is structured so Supabase Auth can replace the token gate later.
+
+## Event Import Bot
+
+The admin dashboard includes a review-first event finder:
+
+1. Add source URLs in `/admin`.
+2. Click `Run Bot`.
+3. The bot checks active source URLs.
+4. It creates imported event cards with `status = pending`.
+5. Review, approve, reject, feature, or delete each card in the admin table.
+
+The bot first looks for Schema.org `Event` JSON-LD on source pages. If `OPENAI_API_KEY` and `OPENAI_MODEL` are set, it can also use AI extraction for messy pages. The bot does not publish events automatically.
+
+For an existing Supabase database, run the SQL in `supabase/migrations/20260610_event_imports.sql`.
 
 ## Core Routes
 
@@ -72,6 +86,9 @@ Add these environment variables in Vercel:
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `ADMIN_ACCESS_TOKEN`
+- `ADMIN_PASSWORD`
+- `OPENAI_API_KEY`
+- `OPENAI_MODEL`
 
 Use the default Next.js build command:
 

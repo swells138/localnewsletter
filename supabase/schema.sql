@@ -40,8 +40,25 @@ create table if not exists public.events (
   organizer_name text not null,
   organizer_email text not null,
   image_url text,
+  source_url text,
+  imported_at timestamptz,
+  import_confidence numeric(4,3),
+  raw_import_data jsonb,
   status event_status not null default 'pending',
   is_featured boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.event_sources (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  url text not null unique,
+  city_id uuid references public.cities(id) on delete set null,
+  category_id uuid references public.categories(id) on delete set null,
+  is_active boolean not null default true,
+  last_checked_at timestamptz,
+  notes text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -58,6 +75,8 @@ create index if not exists events_status_start_idx on public.events(status, star
 create index if not exists events_city_idx on public.events(city_id);
 create index if not exists events_category_idx on public.events(category_id);
 create index if not exists events_featured_idx on public.events(is_featured) where is_featured = true;
+create index if not exists events_source_url_idx on public.events(source_url);
+create index if not exists event_sources_active_idx on public.event_sources(is_active);
 
 create or replace function public.set_updated_at()
 returns trigger as $$
@@ -72,9 +91,15 @@ create trigger events_set_updated_at
 before update on public.events
 for each row execute function public.set_updated_at();
 
+drop trigger if exists event_sources_set_updated_at on public.event_sources;
+create trigger event_sources_set_updated_at
+before update on public.event_sources
+for each row execute function public.set_updated_at();
+
 alter table public.cities enable row level security;
 alter table public.categories enable row level security;
 alter table public.events enable row level security;
+alter table public.event_sources enable row level security;
 alter table public.newsletter_subscribers enable row level security;
 
 create policy "Public can read cities" on public.cities for select using (true);

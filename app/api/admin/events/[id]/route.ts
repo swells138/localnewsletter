@@ -1,14 +1,9 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
+import { isAdminRequest } from "@/lib/admin/auth";
 import { createSupabaseAdminClient, hasSupabaseConfig } from "@/lib/supabase";
 
-const requireAdmin = async () => {
-  const token = (await cookies()).get("neo_admin")?.value;
-  return token && token === (process.env.ADMIN_ACCESS_TOKEN ?? "change-me-before-deploy");
-};
-
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  if (!(await requireAdmin())) return NextResponse.redirect(new URL("/admin/login", request.url));
+  if (!(await isAdminRequest())) return NextResponse.redirect(new URL("/admin/login", request.url));
   const { id } = await params;
   const form = await request.formData();
   const action = String(form.get("action") ?? "");

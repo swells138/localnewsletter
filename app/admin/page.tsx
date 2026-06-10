@@ -3,30 +3,101 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { PageShell } from "@/components/page-shell";
+import { adminCookieName, getAdminPassword } from "@/lib/admin/auth";
 import { formatEventDate } from "@/lib/format";
-import { getEvents } from "@/lib/data";
+import { getCategories, getCities, getEvents, getEventSources } from "@/lib/data";
 
 export const metadata: Metadata = {
   title: "Admin"
 };
 
-export default async function AdminPage() {
-  const token = (await cookies()).get("neo_admin")?.value;
-  const expected = process.env.ADMIN_ACCESS_TOKEN ?? "change-me-before-deploy";
+export default async function AdminPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
+  const token = (await cookies()).get(adminCookieName)?.value;
+  const expected = getAdminPassword();
+  const params = await searchParams;
   if (token !== expected) redirect("/admin/login");
 
-  const events = await getEvents({}, true);
+  const [events, cities, categories, sources] = await Promise.all([getEvents({}, true), getCities(), getCategories(), getEventSources()]);
+  const pendingEvents = events.filter((event) => event.status === "pending");
 
   return (
     <PageShell className="grid gap-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-sm font-semibold uppercase tracking-wide text-lake">Admin</p>
-          <h1 className="text-3xl font-bold">Event review dashboard</h1>
+          <h1 className="text-3xl font-bold">Event bot and review dashboard</h1>
         </div>
         <Link href="/submit-event" className="rounded bg-lake px-4 py-2 font-semibold text-white">Create event</Link>
       </div>
+      {params.import === "complete" && (
+        <div className="rounded border border-leaf/20 bg-leaf/10 p-3 text-sm font-medium text-leaf">
+          Bot run complete: checked {params.checked} source{params.checked === "1" ? "" : "s"}, created {params.created} pending card{params.created === "1" ? "" : "s"}, skipped {params.skipped}, errors {params.errors}.
+        </div>
+      )}
+      {params.import === "needs-supabase" && (
+        <div className="rounded border border-amber/25 bg-amber/10 p-3 text-sm font-medium text-ink">
+          Add Supabase environment variables before running the bot. Local sample data is read-only.
+        </div>
+      )}
+      <section className="grid gap-4 lg:grid-cols-[1fr_340px]">
+        <div className="rounded border border-ink/10 bg-white p-5 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-bold">Run event finder</h2>
+              <p className="mt-1 text-sm text-ink/65">Checks active source URLs and creates pending cards for review.</p>
+            </div>
+            <form action="/api/admin/import" method="post">
+              <button className="min-h-11 rounded bg-berry px-4 py-2 font-semibold text-white">Run Bot</button>
+            </form>
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            <div className="rounded bg-paper p-3"><span className="text-2xl font-bold">{sources.length}</span><span className="block text-sm text-ink/60">sources</span></div>
+            <div className="rounded bg-paper p-3"><span className="text-2xl font-bold">{pendingEvents.length}</span><span className="block text-sm text-ink/60">pending cards</span></div>
+            <div className="rounded bg-paper p-3"><span className="text-2xl font-bold">{events.filter((event) => event.source_url).length}</span><span className="block text-sm text-ink/60">imported</span></div>
+          </div>
+        </div>
+        <form action="/api/admin/sources" method="post" className="rounded border border-ink/10 bg-white p-5 shadow-sm">
+          <h2 className="text-xl font-bold">Add source URL</h2>
+          <div className="mt-4 grid gap-3">
+            <label className="text-sm font-medium">Source name<input required name="name" className="focus-ring mt-1 min-h-10 w-full rounded border border-ink/15 px-3" /></label>
+            <label className="text-sm font-medium">URL<input required type="url" name="url" className="focus-ring mt-1 min-h-10 w-full rounded border border-ink/15 px-3" /></label>
+            <label className="text-sm font-medium">Default city<select name="city_id" className="focus-ring mt-1 min-h-10 w-full rounded border border-ink/15 px-3"><option value="">Auto-detect</option>{cities.map((city) => <option key={city.id} value={city.id}>{city.name}</option>)}</select></label>
+            <label className="text-sm font-medium">Default category<select name="category_id" className="focus-ring mt-1 min-h-10 w-full rounded border border-ink/15 px-3"><option value="">Auto-detect</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
+            <label className="text-sm font-medium">Notes<textarea name="notes" rows={2} className="focus-ring mt-1 w-full rounded border border-ink/15 px-3 py-2" /></label>
+            <button className="min-h-10 rounded bg-lake px-3 py-2 font-semibold text-white">Save Source</button>
+          </div>
+        </form>
+      </section>
+      <section className="overflow-x-auto rounded border border-ink/10 bg-white shadow-sm">
+        <div className="border-b border-ink/10 p-4">
+          <h2 className="text-xl font-bold">Source URLs</h2>
+        </div>
+        <table className="w-full min-w-[760px] text-left text-sm">
+          <thead className="border-b border-ink/10 bg-paper text-ink/65">
+            <tr>
+              <th className="p-3">Name</th>
+              <th className="p-3">URL</th>
+              <th className="p-3">Default</th>
+              <th className="p-3">Last checked</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sources.map((source) => (
+              <tr key={source.id} className="border-b border-ink/10">
+                <td className="p-3 font-semibold">{source.name}</td>
+                <td className="p-3"><a className="text-lake" href={source.url} target="_blank" rel="noreferrer">{source.url}</a></td>
+                <td className="p-3 text-ink/70">{source.city?.name ?? "Auto city"} · {source.category?.name ?? "Auto category"}</td>
+                <td className="p-3 text-ink/70">{source.last_checked_at ? new Date(source.last_checked_at).toLocaleString() : "Not checked"}</td>
+              </tr>
+            ))}
+            {!sources.length && <tr><td colSpan={4} className="p-4 text-ink/60">No sources yet. Add a city, venue, library, chamber, or events calendar URL to start.</td></tr>}
+          </tbody>
+        </table>
+      </section>
       <div className="overflow-x-auto rounded border border-ink/10 bg-white shadow-sm">
+        <div className="border-b border-ink/10 p-4">
+          <h2 className="text-xl font-bold">Event cards</h2>
+        </div>
         <table className="w-full min-w-[900px] text-left text-sm">
           <thead className="border-b border-ink/10 bg-paper text-ink/65">
             <tr>
@@ -34,6 +105,7 @@ export default async function AdminPage() {
               <th className="p-3">Date</th>
               <th className="p-3">City</th>
               <th className="p-3">Status</th>
+              <th className="p-3">Source</th>
               <th className="p-3">Featured</th>
               <th className="p-3">Actions</th>
             </tr>
@@ -45,6 +117,7 @@ export default async function AdminPage() {
                 <td className="p-3 text-ink/70">{formatEventDate(event)}</td>
                 <td className="p-3">{event.city.name}</td>
                 <td className="p-3">{event.status}</td>
+                <td className="p-3 text-ink/70">{event.source_url ? <a className="text-lake" href={event.source_url} target="_blank" rel="noreferrer">Imported</a> : "Manual"}</td>
                 <td className="p-3">{event.is_featured ? "Yes" : "No"}</td>
                 <td className="p-3">
                   <form action={`/api/admin/events/${event.id}`} method="post" className="flex flex-wrap gap-2">

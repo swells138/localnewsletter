@@ -1,16 +1,17 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { adminCookieName, getAdminPassword } from "@/lib/admin/auth";
 
 export async function POST(request: Request) {
   const form = await request.formData();
   const token = String(form.get("token") ?? "");
-  const expected = process.env.ADMIN_ACCESS_TOKEN ?? "change-me-before-deploy";
+  const expected = getAdminPassword();
 
   if (!token || token !== expected) {
     return NextResponse.redirect(new URL("/admin/login?error=1", request.url));
   }
 
-  (await cookies()).set("neo_admin", token, {
+  (await cookies()).set(adminCookieName, token, {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",

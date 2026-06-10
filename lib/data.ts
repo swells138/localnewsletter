@@ -1,7 +1,7 @@
 import { addDays, endOfDay, isWithinInterval, parseISO, startOfDay } from "date-fns";
 import { categories as sampleCategories, cities as sampleCities, events as sampleEvents } from "@/lib/sample-data";
 import { createSupabaseAdminClient, hasSupabaseConfig } from "@/lib/supabase";
-import type { Category, City, Event, EventFilters, EventWithRelations } from "@/lib/types";
+import type { Category, City, Event, EventFilters, EventSource, EventSourceWithRelations, EventWithRelations } from "@/lib/types";
 
 const siteNow = () => new Date();
 
@@ -83,3 +83,17 @@ export const getEvents = async (filters: EventFilters = {}, includePending = fal
 export const getEventBySlug = async (slug: string) => (await getEvents({}, true)).find((event) => event.slug === slug);
 export const getCityBySlug = async (slug: string) => (await getCities()).find((city) => city.slug === slug);
 export const getCategoryBySlug = async (slug: string) => (await getCategories()).find((category) => category.slug === slug);
+
+export const getEventSources = async (): Promise<EventSourceWithRelations[]> => {
+  if (!hasSupabaseConfig || !process.env.SUPABASE_SERVICE_ROLE_KEY) return [];
+  const [cities, categories] = await Promise.all([getCities(), getCategories()]);
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase.from("event_sources").select("*").order("created_at", { ascending: false });
+  if (error) return [];
+
+  return (data as EventSource[]).map((source) => ({
+    ...source,
+    city: cities.find((city) => city.id === source.city_id) ?? null,
+    category: categories.find((category) => category.id === source.category_id) ?? null
+  }));
+};
