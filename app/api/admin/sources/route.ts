@@ -28,15 +28,20 @@ export async function POST(request: Request) {
 
   if (!parsed.success) return NextResponse.redirect(new URL("/admin?source=invalid", request.url));
 
-  await getSql()`
-    insert into event_sources (name, url, city_id, category_id, notes)
-    values (${parsed.data.name}, ${parsed.data.url}, ${parsed.data.city_id}, ${parsed.data.category_id}, ${parsed.data.notes})
-    on conflict (url) do update set
-      name = excluded.name,
-      city_id = excluded.city_id,
-      category_id = excluded.category_id,
-      notes = excluded.notes,
-      updated_at = now()
-  `;
+  try {
+    await getSql()`
+      insert into event_sources (name, url, city_id, category_id, notes)
+      values (${parsed.data.name}, ${parsed.data.url}, ${parsed.data.city_id}, ${parsed.data.category_id}, ${parsed.data.notes})
+      on conflict (url) do update set
+        name = excluded.name,
+        city_id = excluded.city_id,
+        category_id = excluded.category_id,
+        notes = excluded.notes,
+        updated_at = now()
+    `;
+  } catch {
+    return NextResponse.redirect(new URL("/admin?source=database-error", request.url));
+  }
+
   return NextResponse.redirect(new URL("/admin?source=added", request.url));
 }

@@ -39,6 +39,26 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
           Add your Neon `DATABASE_URL` before running the bot. Local sample data is read-only.
         </div>
       )}
+      {params.source === "needs-database" && (
+        <div className="rounded border border-amber/25 bg-amber/10 p-3 text-sm font-medium text-ink">
+          Add your Neon `DATABASE_URL` before saving source URLs.
+        </div>
+      )}
+      {params.source === "database-error" && (
+        <div className="rounded border border-berry/25 bg-berry/10 p-3 text-sm font-medium text-berry">
+          Source was not saved. Check that `db/schema.sql` ran successfully in Neon and that `DATABASE_URL` is set in this environment.
+        </div>
+      )}
+      {params.source === "invalid" && (
+        <div className="rounded border border-berry/25 bg-berry/10 p-3 text-sm font-medium text-berry">
+          Source was not saved. Enter a source name and a valid URL.
+        </div>
+      )}
+      {params.source === "added" && (
+        <div className="rounded border border-leaf/20 bg-leaf/10 p-3 text-sm font-medium text-leaf">
+          Source saved.
+        </div>
+      )}
       <section className="grid gap-4 lg:grid-cols-[1fr_340px]">
         <div className="rounded border border-ink/10 bg-white p-5 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">

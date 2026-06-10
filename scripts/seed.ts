@@ -1,5 +1,8 @@
+import { loadEnvConfig } from "@next/env";
 import { getSql } from "../lib/db";
 import { categories, cities, events } from "../lib/sample-data";
+
+loadEnvConfig(process.cwd());
 
 if (!process.env.DATABASE_URL) {
   throw new Error("Set DATABASE_URL before running npm run seed.");
