@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { isAdminRequest } from "@/lib/admin/auth";
 import { getSql, hasDatabaseConfig } from "@/lib/db";
+import { redirectAfterPost } from "@/lib/redirect";
 
 const sourceSchema = z.object({
   name: z.string().min(2),
@@ -12,9 +13,9 @@ const sourceSchema = z.object({
 });
 
 export async function POST(request: Request) {
-  if (!(await isAdminRequest())) return NextResponse.redirect(new URL("/admin/login", request.url));
+  if (!(await isAdminRequest())) return redirectAfterPost("/admin/login", request.url);
   if (!hasDatabaseConfig) {
-    return NextResponse.redirect(new URL("/admin?source=needs-database", request.url));
+    return redirectAfterPost("/admin?source=needs-database", request.url);
   }
 
   const form = await request.formData();
@@ -26,7 +27,7 @@ export async function POST(request: Request) {
     notes: String(form.get("notes") ?? "") || null
   });
 
-  if (!parsed.success) return NextResponse.redirect(new URL("/admin?source=invalid", request.url));
+  if (!parsed.success) return redirectAfterPost("/admin?source=invalid", request.url);
 
   try {
     await getSql()`
@@ -40,8 +41,8 @@ export async function POST(request: Request) {
         updated_at = now()
     `;
   } catch {
-    return NextResponse.redirect(new URL("/admin?source=database-error", request.url));
+    return redirectAfterPost("/admin?source=database-error", request.url);
   }
 
-  return NextResponse.redirect(new URL("/admin?source=added", request.url));
+  return redirectAfterPost("/admin?source=added", request.url);
 }

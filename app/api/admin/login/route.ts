@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { adminCookieName, getAdminPassword } from "@/lib/admin/auth";
+import { redirectAfterPost } from "@/lib/redirect";
 
 export async function POST(request: Request) {
   const form = await request.formData();
@@ -8,7 +9,7 @@ export async function POST(request: Request) {
   const expected = getAdminPassword();
 
   if (!token || token !== expected) {
-    return NextResponse.redirect(new URL("/admin/login?error=1", request.url));
+    return redirectAfterPost("/admin/login?error=1", request.url);
   }
 
   (await cookies()).set(adminCookieName, token, {
@@ -18,5 +19,5 @@ export async function POST(request: Request) {
     path: "/"
   });
 
-  return NextResponse.redirect(new URL("/admin", request.url));
+  return redirectAfterPost("/admin", request.url);
 }

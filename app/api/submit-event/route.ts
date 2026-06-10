@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getSql, hasDatabaseConfig } from "@/lib/db";
+import { redirectAfterPost } from "@/lib/redirect";
 
 const schema = z.object({
   title: z.string().min(3),
@@ -29,7 +30,7 @@ const slugify = (value: string) =>
 export async function POST(request: Request) {
   const form = await request.formData();
   if (String(form.get("website") ?? "")) {
-    return NextResponse.redirect(new URL("/submit-event?submitted=1", request.url));
+    return redirectAfterPost("/submit-event?submitted=1", request.url);
   }
 
   const parsed = schema.safeParse({
@@ -81,5 +82,5 @@ export async function POST(request: Request) {
     }
   }
 
-  return NextResponse.redirect(new URL("/submit-event?submitted=1", request.url));
+  return redirectAfterPost("/submit-event?submitted=1", request.url);
 }

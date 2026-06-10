@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getSql, hasDatabaseConfig } from "@/lib/db";
+import { redirectAfterPost } from "@/lib/redirect";
 
 const schema = z.object({
   email: z.string().email(),
@@ -34,5 +35,5 @@ export async function POST(request: Request) {
     }
   }
 
-  return NextResponse.redirect(new URL("/?newsletter=1", request.url));
+  return redirectAfterPost("/?newsletter=1", request.url);
 }

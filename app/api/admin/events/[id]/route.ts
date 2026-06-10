@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { isAdminRequest } from "@/lib/admin/auth";
 import { getSql, hasDatabaseConfig } from "@/lib/db";
+import { redirectAfterPost } from "@/lib/redirect";
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  if (!(await isAdminRequest())) return NextResponse.redirect(new URL("/admin/login", request.url));
+  if (!(await isAdminRequest())) return redirectAfterPost("/admin/login", request.url);
   const { id } = await params;
   const form = await request.formData();
   const action = String(form.get("action") ?? "");
@@ -21,5 +22,5 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     }
   }
 
-  return NextResponse.redirect(new URL("/admin", request.url));
+  return redirectAfterPost("/admin", request.url);
 }

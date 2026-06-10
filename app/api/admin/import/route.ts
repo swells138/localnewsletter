@@ -3,11 +3,12 @@ import { isAdminRequest } from "@/lib/admin/auth";
 import { getCategories, getCities, getEventSources } from "@/lib/data";
 import { hasDatabaseConfig } from "@/lib/db";
 import { runEventImport } from "@/lib/importer";
+import { redirectAfterPost } from "@/lib/redirect";
 
 export async function POST(request: Request) {
-  if (!(await isAdminRequest())) return NextResponse.redirect(new URL("/admin/login", request.url));
+  if (!(await isAdminRequest())) return redirectAfterPost("/admin/login", request.url);
   if (!hasDatabaseConfig) {
-    return NextResponse.redirect(new URL("/admin?import=needs-database", request.url));
+    return redirectAfterPost("/admin?import=needs-database", request.url);
   }
 
   const [sources, cities, categories] = await Promise.all([getEventSources(), getCities(), getCategories()]);
@@ -20,5 +21,5 @@ export async function POST(request: Request) {
     errors: String(result.errors.length)
   });
 
-  return NextResponse.redirect(new URL(`/admin?${params.toString()}`, request.url));
+  return redirectAfterPost(`/admin?${params.toString()}`, request.url);
 }
