@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { Calendar, ExternalLink, MapPin, Tag } from "lucide-react";
-import { formatEventDate } from "@/lib/format";
+import { formatEventDate, validExternalUrl } from "@/lib/format";
 import type { EventWithRelations } from "@/lib/types";
 
 export function EventCard({ event, compact = false }: { event: EventWithRelations; compact?: boolean }) {
+  const eventUrl = validExternalUrl(event.event_url);
+
   return (
     <article className="rounded border border-ink/10 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-soft">
       <div className="flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-wide text-ink/60">
@@ -24,8 +26,8 @@ export function EventCard({ event, compact = false }: { event: EventWithRelation
         <Link href={`/events/${event.slug}`} className="inline-flex min-h-10 items-center rounded bg-ink px-3 py-2 text-sm font-semibold text-white">
           View Event
         </Link>
-        {event.event_url && (
-          <a href={event.event_url} target="_blank" rel="noreferrer" className="inline-flex min-h-10 items-center gap-2 rounded border border-ink/15 bg-white px-3 py-2 text-sm font-semibold text-lake">
+        {eventUrl && (
+          <a href={eventUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-10 items-center gap-2 rounded border border-ink/15 bg-white px-3 py-2 text-sm font-semibold text-lake">
             <ExternalLink size={16} /> Original Page
           </a>
         )}

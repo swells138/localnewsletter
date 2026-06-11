@@ -9,6 +9,19 @@ export const formatEventDate = (event: Pick<EventWithRelations, "start_datetime"
 
 export const siteUrl = () => process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ?? "http://localhost:3000";
 
+export const validExternalUrl = (value?: string | null) => {
+  if (!value) return null;
+
+  try {
+    const url = new URL(value);
+    if (!["http:", "https:"].includes(url.protocol)) return null;
+    if (url.hostname === "example.com" || url.hostname.endsWith(".example.com")) return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+};
+
 export const calendarUrl = (event: EventWithRelations) => {
   const start = event.start_datetime.replace(/[-:]/g, "").replace(/\.\d{3}/, "");
   const end = event.end_datetime.replace(/[-:]/g, "").replace(/\.\d{3}/, "");
@@ -16,7 +29,7 @@ export const calendarUrl = (event: EventWithRelations) => {
     action: "TEMPLATE",
     text: event.title,
     dates: `${start}/${end}`,
-    details: `${event.description}\n\n${event.event_url}`,
+    details: [event.description, validExternalUrl(event.event_url)].filter(Boolean).join("\n\n"),
     location: `${event.venue_name}, ${event.address}`
   });
   return `https://calendar.google.com/calendar/render?${params.toString()}`;

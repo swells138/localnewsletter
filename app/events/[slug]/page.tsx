@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Calendar, ExternalLink, MapPin, Tag, User } from "lucide-react";
 import { EventCard } from "@/components/event-card";
 import { PageShell } from "@/components/page-shell";
-import { calendarUrl, formatEventDate, siteUrl } from "@/lib/format";
+import { calendarUrl, formatEventDate, siteUrl, validExternalUrl } from "@/lib/format";
 import { getEventBySlug, getEvents } from "@/lib/data";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
@@ -26,6 +26,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
   const related = (await getEvents({ city: event.city.slug }))
     .filter((item) => item.id !== event.id)
     .slice(0, 3);
+  const eventUrl = validExternalUrl(event.event_url);
 
   const schema = {
     "@context": "https://schema.org",
@@ -45,7 +46,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
     offers: {
       "@type": "Offer",
       price: event.is_free ? "0" : event.price_text,
-      url: event.event_url
+      url: eventUrl
     },
     organizer: {
       "@type": "Organization",
@@ -66,9 +67,11 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
             <a href={calendarUrl(event)} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center gap-2 rounded bg-lake px-4 py-2 font-semibold text-white">
               <Calendar size={18} /> Add to calendar
             </a>
-            <a href={event.event_url} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center gap-2 rounded border border-ink/15 bg-white px-4 py-2 font-semibold">
-              <ExternalLink size={18} /> Event link
-            </a>
+            {eventUrl && (
+              <a href={eventUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center gap-2 rounded border border-ink/15 bg-white px-4 py-2 font-semibold">
+                <ExternalLink size={18} /> Event link
+              </a>
+            )}
           </div>
         </div>
         <aside className="rounded border border-ink/10 bg-white p-5 shadow-sm">
