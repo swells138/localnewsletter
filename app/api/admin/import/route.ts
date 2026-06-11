@@ -16,6 +16,8 @@ export async function POST(request: Request) {
   const params = new URLSearchParams({
     import: "complete",
     checked: String(result.checked),
+    found: String(result.found),
+    ai: String(result.aiSources),
     created: String(result.created),
     skipped: String(result.skipped),
     errors: String(result.errors.length)

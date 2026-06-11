@@ -22,6 +22,8 @@ type ImportedCandidate = {
 
 export type ImportResult = {
   checked: number;
+  found: number;
+  aiSources: number;
   created: number;
   skipped: number;
   errors: string[];
@@ -47,6 +49,20 @@ const stripHtml = (html: string) =>
     .replace(/<[^>]+>/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+
+const getResponseText = (data: unknown) => {
+  if (!data || typeof data !== "object") return "";
+  const response = data as { output_text?: string; output?: Array<{ content?: Array<{ text?: string; type?: string }> }> };
+  if (response.output_text) return response.output_text;
+
+  return (
+    response.output
+      ?.flatMap((item) => item.content ?? [])
+      .map((content) => content.text ?? "")
+      .join("")
+      .trim() ?? ""
+  );
+};
 
 const extractJsonLdEvents = (html: string): ImportedCandidate[] => {
   const matches = html.match(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi) ?? [];
@@ -94,9 +110,10 @@ const extractJsonLdEvents = (html: string): ImportedCandidate[] => {
 };
 
 const extractWithAi = async (html: string, sourceUrl: string): Promise<ImportedCandidate[]> => {
-  if (!process.env.OPENAI_API_KEY || !process.env.OPENAI_MODEL) return [];
+  if (!process.env.OPENAI_API_KEY) return [];
 
   const text = stripHtml(html).slice(0, 18000);
+  const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
   const response = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
     headers: {
@@ -104,7 +121,7 @@ const extractWithAi = async (html: string, sourceUrl: string): Promise<ImportedC
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
-      model: process.env.OPENAI_MODEL,
+      model,
       input: [
         {
           role: "system",
@@ -121,6 +138,7 @@ const extractWithAi = async (html: string, sourceUrl: string): Promise<ImportedC
           name: "event_import",
           schema: {
             type: "object",
+            strict: true,
             additionalProperties: false,
             properties: {
               events: {
@@ -156,11 +174,11 @@ const extractWithAi = async (html: string, sourceUrl: string): Promise<ImportedC
   });
 
   if (!response.ok) return [];
-  const data = (await response.json()) as { output_text?: string };
-  if (!data.output_text) return [];
+  const responseText = getResponseText(await response.json());
+  if (!responseText) return [];
 
   try {
-    const parsed = JSON.parse(data.output_text) as { events?: ImportedCandidate[] };
+    const parsed = JSON.parse(responseText) as { events?: ImportedCandidate[] };
     return parsed.events ?? [];
   } catch {
     return [];
@@ -181,7 +199,7 @@ const pickCategory = (candidate: ImportedCandidate, fallback: Category | null, c
 
 export const runEventImport = async (sources: EventSourceWithRelations[], cities: City[], categories: Category[]): Promise<ImportResult> => {
   const sql = getSql();
-  const result: ImportResult = { checked: 0, created: 0, skipped: 0, errors: [] };
+  const result: ImportResult = { checked: 0, found: 0, aiSources: 0, created: 0, skipped: 0, errors: [] };
 
   for (const source of sources.filter((item) => item.is_active)) {
     result.checked += 1;
@@ -198,7 +216,12 @@ export const runEventImport = async (sources: EventSourceWithRelations[], cities
       }
 
       const html = await response.text();
-      const candidates = [...extractJsonLdEvents(html), ...(await extractWithAi(html, source.url))];
+      const structuredCandidates = extractJsonLdEvents(html);
+      const aiCandidates = await extractWithAi(html, source.url);
+      if (aiCandidates.length) result.aiSources += 1;
+
+      const candidates = [...structuredCandidates, ...aiCandidates];
+      result.found += candidates.length;
       const dedupe = new Set<string>();
 
       for (const candidate of candidates) {

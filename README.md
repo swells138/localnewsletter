@@ -62,7 +62,7 @@ The admin dashboard includes a review-first event finder:
 4. It creates imported event cards with `status = pending`.
 5. Review, approve, reject, feature, or delete each card in the admin table.
 
-The bot first looks for Schema.org `Event` JSON-LD on source pages. If `OPENAI_API_KEY` and `OPENAI_MODEL` are set, it can also use AI extraction for messy pages. The bot does not publish events automatically.
+The bot first looks for Schema.org `Event` JSON-LD on source pages. If `OPENAI_API_KEY` is set, it can also use AI extraction for messy pages. `OPENAI_MODEL` defaults to `gpt-4o-mini` when omitted. The bot does not publish events automatically.
 
 For an existing Neon database, run the SQL in `db/migrations/20260610_event_imports.sql`.
 

@@ -31,7 +31,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
       </div>
       {params.import === "complete" && (
         <div className="rounded border border-leaf/20 bg-leaf/10 p-3 text-sm font-medium text-leaf">
-          Bot run complete: checked {params.checked} source{params.checked === "1" ? "" : "s"}, created {params.created} pending card{params.created === "1" ? "" : "s"}, skipped {params.skipped}, errors {params.errors}.
+          Bot run complete: checked {params.checked} source{params.checked === "1" ? "" : "s"}, found {params.found ?? "0"} candidate{params.found === "1" ? "" : "s"}, used AI on {params.ai ?? "0"} source{params.ai === "1" ? "" : "s"}, created {params.created} pending card{params.created === "1" ? "" : "s"}, skipped {params.skipped}, errors {params.errors}.
         </div>
       )}
       {params.import === "needs-database" && (
