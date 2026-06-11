@@ -19,6 +19,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
 
   const [events, cities, categories, sources] = await Promise.all([getEvents({}, true), getCities(), getCategories(), getEventSources()]);
   const pendingEvents = events.filter((event) => event.status === "pending");
+  const needsSeed = cities.length === 0 || categories.length === 0;
 
   return (
     <PageShell className="grid gap-6">
@@ -78,6 +79,34 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
         <div className="rounded border border-leaf/20 bg-leaf/10 p-3 text-sm font-medium text-leaf">
           Source deleted.
         </div>
+      )}
+      {params.seed === "complete" && (
+        <div className="rounded border border-leaf/20 bg-leaf/10 p-3 text-sm font-medium text-leaf">
+          Database seeded: {params.cities} cities, {params.categories} categories, and {params.events} events.
+        </div>
+      )}
+      {params.seed === "needs-database" && (
+        <div className="rounded border border-amber/25 bg-amber/10 p-3 text-sm font-medium text-ink">
+          Add your Neon `DATABASE_URL` before seeding the database.
+        </div>
+      )}
+      {params.seed === "error" && (
+        <div className="rounded border border-berry/25 bg-berry/10 p-3 text-sm font-medium text-berry">
+          Database seed failed. Check that `db/schema.sql` ran successfully in Neon.
+        </div>
+      )}
+      {needsSeed && (
+        <section className="rounded border border-amber/25 bg-amber/10 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-bold">City and category options are missing</h2>
+              <p className="mt-1 text-sm text-ink/70">Seed the Neon database to populate the dropdowns.</p>
+            </div>
+            <form action="/api/admin/seed" method="post">
+              <button className="min-h-10 rounded bg-amber px-4 py-2 font-semibold text-ink">Seed Database</button>
+            </form>
+          </div>
+        </section>
       )}
       <section className="grid gap-4 lg:grid-cols-[1fr_340px]">
         <div className="rounded border border-ink/10 bg-white p-5 shadow-sm">
