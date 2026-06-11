@@ -49,6 +49,21 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
           Source was not saved. Check that `db/schema.sql` ran successfully in Neon and that `DATABASE_URL` is set in this environment.
         </div>
       )}
+      {params.source === "missing-schema" && (
+        <div className="rounded border border-berry/25 bg-berry/10 p-3 text-sm font-medium text-berry">
+          Source was not saved because the Neon tables are missing. Run the full `db/schema.sql` file in the Neon SQL Editor.
+        </div>
+      )}
+      {params.source === "invalid-relation" && (
+        <div className="rounded border border-berry/25 bg-berry/10 p-3 text-sm font-medium text-berry">
+          Source was not saved because the selected city or category ID is not in Neon. Run `npm run seed`, then refresh this page and try again.
+        </div>
+      )}
+      {params.source === "connection-error" && (
+        <div className="rounded border border-berry/25 bg-berry/10 p-3 text-sm font-medium text-berry">
+          Source was not saved because the app could not connect to Neon. Check the `DATABASE_URL` environment variable in Vercel.
+        </div>
+      )}
       {params.source === "invalid" && (
         <div className="rounded border border-berry/25 bg-berry/10 p-3 text-sm font-medium text-berry">
           Source was not saved. Enter a source name and a valid URL.

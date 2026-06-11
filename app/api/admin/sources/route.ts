@@ -12,6 +12,17 @@ const sourceSchema = z.object({
   notes: z.string().nullable()
 });
 
+const sourceErrorCode = (error: unknown) => {
+  const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+
+  if (message.includes("relation") && message.includes("event_sources")) return "missing-schema";
+  if (message.includes("relation") && (message.includes("cities") || message.includes("categories"))) return "missing-schema";
+  if (message.includes("invalid input syntax") && message.includes("uuid")) return "invalid-relation";
+  if (message.includes("password authentication failed") || message.includes("connection") || message.includes("connect")) return "connection-error";
+
+  return "database-error";
+};
+
 export async function POST(request: Request) {
   if (!(await isAdminRequest())) return redirectAfterPost("/admin/login", request.url);
   if (!hasDatabaseConfig) {
@@ -40,8 +51,9 @@ export async function POST(request: Request) {
         notes = excluded.notes,
         updated_at = now()
     `;
-  } catch {
-    return redirectAfterPost("/admin?source=database-error", request.url);
+  } catch (error) {
+    console.error("Failed to save event source", error);
+    return redirectAfterPost(`/admin?source=${sourceErrorCode(error)}`, request.url);
   }
 
   return redirectAfterPost("/admin?source=added", request.url);
