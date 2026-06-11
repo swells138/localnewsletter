@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Calendar, MapPin, Tag } from "lucide-react";
+import { Calendar, ExternalLink, MapPin, Tag } from "lucide-react";
 import { formatEventDate } from "@/lib/format";
 import type { EventWithRelations } from "@/lib/types";
 
@@ -20,9 +20,16 @@ export function EventCard({ event, compact = false }: { event: EventWithRelation
         <p className="flex gap-2"><Tag className="mt-0.5 shrink-0 text-leaf" size={16} /> {event.category.name} · {event.price_text}</p>
       </div>
       {!compact && <p className="mt-3 line-clamp-3 text-sm leading-6 text-ink/72">{event.description}</p>}
-      <Link href={`/events/${event.slug}`} className="mt-4 inline-flex min-h-10 items-center rounded bg-ink px-3 py-2 text-sm font-semibold text-white">
-        View Event
-      </Link>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <Link href={`/events/${event.slug}`} className="inline-flex min-h-10 items-center rounded bg-ink px-3 py-2 text-sm font-semibold text-white">
+          View Event
+        </Link>
+        {event.event_url && (
+          <a href={event.event_url} target="_blank" rel="noreferrer" className="inline-flex min-h-10 items-center gap-2 rounded border border-ink/15 bg-white px-3 py-2 text-sm font-semibold text-lake">
+            <ExternalLink size={16} /> Original Page
+          </a>
+        )}
+      </div>
     </article>
   );
 }
