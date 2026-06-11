@@ -74,6 +74,11 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
           Source saved.
         </div>
       )}
+      {params.source === "deleted" && (
+        <div className="rounded border border-leaf/20 bg-leaf/10 p-3 text-sm font-medium text-leaf">
+          Source deleted.
+        </div>
+      )}
       <section className="grid gap-4 lg:grid-cols-[1fr_340px]">
         <div className="rounded border border-ink/10 bg-white p-5 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -98,7 +103,9 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
             <label className="text-sm font-medium">URL<input required type="url" name="url" className="focus-ring mt-1 min-h-10 w-full rounded border border-ink/15 px-3" /></label>
             <label className="text-sm font-medium">Default city<select name="city_id" className="focus-ring mt-1 min-h-10 w-full rounded border border-ink/15 px-3"><option value="">Auto-detect</option>{cities.map((city) => <option key={city.id} value={city.id}>{city.name}</option>)}</select></label>
             <label className="text-sm font-medium">Default category<select name="category_id" className="focus-ring mt-1 min-h-10 w-full rounded border border-ink/15 px-3"><option value="">Auto-detect</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
+            <label className="flex min-h-10 items-center gap-2 text-sm font-medium"><input type="checkbox" name="is_active" value="1" defaultChecked /> Active</label>
             <label className="text-sm font-medium">Notes<textarea name="notes" rows={2} className="focus-ring mt-1 w-full rounded border border-ink/15 px-3 py-2" /></label>
+            <input type="hidden" name="action" value="save" />
             <button className="min-h-10 rounded bg-lake px-3 py-2 font-semibold text-white">Save Source</button>
           </div>
         </form>
@@ -113,19 +120,58 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
               <th className="p-3">Name</th>
               <th className="p-3">URL</th>
               <th className="p-3">Default</th>
+              <th className="p-3">Active</th>
               <th className="p-3">Last checked</th>
+              <th className="p-3">Actions</th>
             </tr>
           </thead>
           <tbody>
             {sources.map((source) => (
               <tr key={source.id} className="border-b border-ink/10">
-                <td className="p-3 font-semibold">{source.name}</td>
-                <td className="p-3"><a className="text-lake" href={source.url} target="_blank" rel="noreferrer">{source.url}</a></td>
-                <td className="p-3 text-ink/70">{source.city?.name ?? "Auto city"} · {source.category?.name ?? "Auto category"}</td>
+                <td className="p-3 align-top">
+                  <form id={`source-${source.id}`} action="/api/admin/sources" method="post" className="grid min-w-52 gap-2">
+                    <input type="hidden" name="id" value={source.id} />
+                    <input type="hidden" name="action" value="save" />
+                    <input required name="name" defaultValue={source.name} className="focus-ring min-h-10 rounded border border-ink/15 px-3 font-semibold" />
+                    <textarea name="notes" rows={2} defaultValue={source.notes ?? ""} className="focus-ring rounded border border-ink/15 px-3 py-2 text-sm" />
+                  </form>
+                </td>
+                <td className="p-3 align-top">
+                  <input form={`source-${source.id}`} required type="url" name="url" defaultValue={source.url} className="focus-ring min-h-10 w-80 rounded border border-ink/15 px-3 text-sm" />
+                </td>
+                <td className="p-3 align-top">
+                  <div className="grid gap-2">
+                    <select form={`source-${source.id}`} name="city_id" defaultValue={source.city_id ?? ""} className="focus-ring min-h-10 rounded border border-ink/15 px-3 text-sm">
+                      <option value="">Auto city</option>
+                      {cities.map((city) => <option key={city.id} value={city.id}>{city.name}</option>)}
+                    </select>
+                    <select form={`source-${source.id}`} name="category_id" defaultValue={source.category_id ?? ""} className="focus-ring min-h-10 rounded border border-ink/15 px-3 text-sm">
+                      <option value="">Auto category</option>
+                      {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+                    </select>
+                  </div>
+                </td>
+                <td className="p-3 align-top">
+                  <label className="flex min-h-10 items-center gap-2 text-sm"><input form={`source-${source.id}`} type="checkbox" name="is_active" value="1" defaultChecked={source.is_active} /> Active</label>
+                </td>
                 <td className="p-3 text-ink/70">{source.last_checked_at ? new Date(source.last_checked_at).toLocaleString() : "Not checked"}</td>
+                <td className="p-3 align-top">
+                  <div className="flex flex-wrap gap-2">
+                    <button form={`source-${source.id}`} className="rounded bg-lake px-3 py-2 text-xs font-semibold text-white">Save</button>
+                    <form action="/api/admin/sources" method="post">
+                      <input type="hidden" name="id" value={source.id} />
+                      <input type="hidden" name="action" value="delete" />
+                      <input type="hidden" name="name" value={source.name} />
+                      <input type="hidden" name="url" value={source.url} />
+                      <input type="hidden" name="city_id" value={source.city_id ?? ""} />
+                      <input type="hidden" name="category_id" value={source.category_id ?? ""} />
+                      <button className="rounded border border-berry/30 px-3 py-2 text-xs font-semibold text-berry">Delete</button>
+                    </form>
+                  </div>
+                </td>
               </tr>
             ))}
-            {!sources.length && <tr><td colSpan={4} className="p-4 text-ink/60">No sources yet. Add a city, venue, library, chamber, or events calendar URL to start.</td></tr>}
+            {!sources.length && <tr><td colSpan={6} className="p-4 text-ink/60">No sources yet. Add a city, venue, library, chamber, or events calendar URL to start.</td></tr>}
           </tbody>
         </table>
       </section>
