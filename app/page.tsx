@@ -31,6 +31,7 @@ export default async function HomePage() {
           <div className="flex items-center gap-2 text-sm font-semibold text-berry"><Newspaper size={18} /> Weekend editor picks</div>
           <div className="mt-4 grid gap-3">
             {featured.map((event) => <EventCard key={event.id} event={event} compact />)}
+            {!featured.length && <p className="rounded bg-paper p-3 text-sm text-ink/60">No approved featured events yet.</p>}
           </div>
         </div>
       </section>
@@ -49,6 +50,7 @@ export default async function HomePage() {
         </div>
         <div className="grid gap-4 md:grid-cols-3">
           {featured.map((event) => <EventCard key={event.id} event={event} />)}
+          {!featured.length && <p className="rounded border border-ink/10 bg-white p-4 text-sm text-ink/60 md:col-span-3">No featured events yet. Imported or submitted cards will appear here after approval.</p>}
         </div>
       </section>
 
@@ -59,6 +61,7 @@ export default async function HomePage() {
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {weekend.map((event) => <EventCard key={event.id} event={event} />)}
+          {!weekend.length && <p className="rounded border border-ink/10 bg-white p-4 text-sm text-ink/60 md:col-span-2 lg:col-span-3">No approved events yet. Run the bot from admin, then approve pending cards.</p>}
         </div>
       </section>
 

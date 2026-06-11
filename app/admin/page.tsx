@@ -232,6 +232,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
                 </td>
               </tr>
             ))}
+            {!events.length && <tr><td colSpan={7} className="p-4 text-ink/60">No event cards yet. Run the bot or submit an event to create pending cards.</td></tr>}
           </tbody>
         </table>
       </div>

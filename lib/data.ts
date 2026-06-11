@@ -1,5 +1,5 @@
 import { addDays, endOfDay, isWithinInterval, parseISO, startOfDay } from "date-fns";
-import { categories as sampleCategories, cities as sampleCities, events as sampleEvents } from "@/lib/sample-data";
+import { categories as sampleCategories, cities as sampleCities } from "@/lib/sample-data";
 import { getSql, hasDatabaseConfig } from "@/lib/db";
 import type { Category, City, Event, EventFilters, EventSource, EventSourceWithRelations, EventWithRelations } from "@/lib/types";
 
@@ -62,14 +62,14 @@ export const getEvents = async (filters: EventFilters = {}, includePending = fal
 
   let rows: Event[];
   if (!hasDatabaseConfig) {
-    rows = sampleEvents;
+    rows = [];
   } else {
     try {
       rows = includePending
         ? ((await getSql()`select * from events where status in ('pending', 'published', 'draft', 'rejected') order by start_datetime asc`) as Event[]).map(normalizeEvent)
         : ((await getSql()`select * from events where status = 'published' order by start_datetime asc`) as Event[]).map(normalizeEvent);
     } catch {
-      rows = sampleEvents;
+      rows = [];
     }
   }
 

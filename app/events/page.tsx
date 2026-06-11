@@ -37,6 +37,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
       </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {events.map((event) => <EventCard key={event.id} event={event} />)}
+        {!events.length && <p className="rounded border border-ink/10 bg-white p-4 text-sm text-ink/60 md:col-span-2 lg:col-span-3">No approved events match these filters yet.</p>}
       </div>
     </PageShell>
   );
