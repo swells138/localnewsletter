@@ -20,6 +20,9 @@ export async function POST(request: Request) {
     ai: String(result.aiSources),
     created: String(result.created),
     skipped: String(result.skipped),
+    missing: String(result.missingRequired),
+    duplicate: String(result.duplicates),
+    unmatched: String(result.unmatchedLocation),
     errors: String(result.errors.length)
   });
 

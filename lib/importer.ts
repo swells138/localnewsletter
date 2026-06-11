@@ -26,6 +26,9 @@ export type ImportResult = {
   aiSources: number;
   created: number;
   skipped: number;
+  missingRequired: number;
+  duplicates: number;
+  unmatchedLocation: number;
   errors: string[];
 };
 
@@ -199,7 +202,17 @@ const pickCategory = (candidate: ImportedCandidate, fallback: Category | null, c
 
 export const runEventImport = async (sources: EventSourceWithRelations[], cities: City[], categories: Category[]): Promise<ImportResult> => {
   const sql = getSql();
-  const result: ImportResult = { checked: 0, found: 0, aiSources: 0, created: 0, skipped: 0, errors: [] };
+  const result: ImportResult = {
+    checked: 0,
+    found: 0,
+    aiSources: 0,
+    created: 0,
+    skipped: 0,
+    missingRequired: 0,
+    duplicates: 0,
+    unmatchedLocation: 0,
+    errors: []
+  };
 
   for (const source of sources.filter((item) => item.is_active)) {
     result.checked += 1;
@@ -229,12 +242,14 @@ export const runEventImport = async (sources: EventSourceWithRelations[], cities
         const title = candidate.title?.trim();
         if (!title || !start) {
           result.skipped += 1;
+          result.missingRequired += 1;
           continue;
         }
 
         const key = `${title.toLowerCase()}-${start}`;
         if (dedupe.has(key)) {
           result.skipped += 1;
+          result.duplicates += 1;
           continue;
         }
         dedupe.add(key);
@@ -243,6 +258,7 @@ export const runEventImport = async (sources: EventSourceWithRelations[], cities
         const category = pickCategory(candidate, source.category, categories);
         if (!city || !category) {
           result.skipped += 1;
+          result.unmatchedLocation += 1;
           continue;
         }
 
@@ -252,6 +268,7 @@ export const runEventImport = async (sources: EventSourceWithRelations[], cities
 
         if (existing?.length) {
           result.skipped += 1;
+          result.duplicates += 1;
           continue;
         }
 
