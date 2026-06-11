@@ -5,6 +5,28 @@ import type { Category, City, Event, EventFilters, EventSource, EventSourceWithR
 
 const siteNow = () => new Date();
 
+const toIsoString = (value: unknown) => {
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === "string") return value;
+  return value ? new Date(String(value)).toISOString() : new Date().toISOString();
+};
+
+const normalizeEvent = (event: Event): Event => ({
+  ...event,
+  start_datetime: toIsoString(event.start_datetime),
+  end_datetime: toIsoString(event.end_datetime),
+  imported_at: event.imported_at ? toIsoString(event.imported_at) : null,
+  created_at: toIsoString(event.created_at),
+  updated_at: toIsoString(event.updated_at)
+});
+
+const normalizeSource = (source: EventSource): EventSource => ({
+  ...source,
+  last_checked_at: source.last_checked_at ? toIsoString(source.last_checked_at) : null,
+  created_at: toIsoString(source.created_at),
+  updated_at: toIsoString(source.updated_at)
+});
+
 export const getCities = async (): Promise<City[]> => {
   if (!hasDatabaseConfig) return sampleCities;
   try {
@@ -44,8 +66,8 @@ export const getEvents = async (filters: EventFilters = {}, includePending = fal
   } else {
     try {
       rows = includePending
-        ? ((await getSql()`select * from events where status in ('pending', 'published', 'draft', 'rejected') order by start_datetime asc`) as Event[])
-        : ((await getSql()`select * from events where status = 'published' order by start_datetime asc`) as Event[]);
+        ? ((await getSql()`select * from events where status in ('pending', 'published', 'draft', 'rejected') order by start_datetime asc`) as Event[]).map(normalizeEvent)
+        : ((await getSql()`select * from events where status = 'published' order by start_datetime asc`) as Event[]).map(normalizeEvent);
     } catch {
       rows = sampleEvents;
     }
@@ -93,7 +115,7 @@ export const getEventSources = async (): Promise<EventSourceWithRelations[]> => 
   const [cities, categories] = await Promise.all([getCities(), getCategories()]);
   let data: EventSource[];
   try {
-    data = (await getSql()`select * from event_sources order by created_at desc`) as EventSource[];
+    data = ((await getSql()`select * from event_sources order by created_at desc`) as EventSource[]).map(normalizeSource);
   } catch {
     return [];
   }
