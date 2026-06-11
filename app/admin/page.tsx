@@ -11,6 +11,8 @@ export const metadata: Metadata = {
   title: "Admin"
 };
 
+const dateTimeInputValue = (value: string) => value.slice(0, 16);
+
 export default async function AdminPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const token = (await cookies()).get(adminCookieName)?.value;
   const expected = getAdminPassword();
@@ -93,6 +95,16 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
       {params.seed === "error" && (
         <div className="rounded border border-berry/25 bg-berry/10 p-3 text-sm font-medium text-berry">
           Database seed failed. Check that `db/schema.sql` ran successfully in Neon.
+        </div>
+      )}
+      {params.event === "saved" && (
+        <div className="rounded border border-leaf/20 bg-leaf/10 p-3 text-sm font-medium text-leaf">
+          Event card saved.
+        </div>
+      )}
+      {params.event === "invalid" && (
+        <div className="rounded border border-berry/25 bg-berry/10 p-3 text-sm font-medium text-berry">
+          Event card was not saved. Check the start date, end date, and status.
         </div>
       )}
       {needsSeed && (
@@ -197,44 +209,56 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
           {!sources.length && <p className="text-sm text-ink/60">No sources yet. Add a city, venue, library, chamber, or events calendar URL to start.</p>}
         </div>
       </section>
-      <div className="overflow-x-auto rounded border border-ink/10 bg-white shadow-sm">
+      <div className="rounded border border-ink/10 bg-white shadow-sm">
         <div className="border-b border-ink/10 p-4">
           <h2 className="text-xl font-bold">Event cards</h2>
         </div>
-        <table className="w-full min-w-[900px] text-left text-sm">
-          <thead className="border-b border-ink/10 bg-paper text-ink/65">
-            <tr>
-              <th className="p-3">Event</th>
-              <th className="p-3">Date</th>
-              <th className="p-3">City</th>
-              <th className="p-3">Status</th>
-              <th className="p-3">Source</th>
-              <th className="p-3">Featured</th>
-              <th className="p-3">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {events.map((event) => (
-              <tr key={event.id} className="border-b border-ink/10">
-                <td className="p-3 font-semibold"><Link href={`/events/${event.slug}`}>{event.title}</Link></td>
-                <td className="p-3 text-ink/70">{formatEventDate(event)}</td>
-                <td className="p-3">{event.city.name}</td>
-                <td className="p-3">{event.status}</td>
-                <td className="p-3 text-ink/70">{event.source_url ? <a className="text-lake" href={event.source_url} target="_blank" rel="noreferrer">Imported</a> : "Manual"}</td>
-                <td className="p-3">{event.is_featured ? "Yes" : "No"}</td>
-                <td className="p-3">
-                  <form action={`/api/admin/events/${event.id}`} method="post" className="flex flex-wrap gap-2">
-                    <button name="action" value="approve" className="rounded bg-leaf px-2 py-1 text-xs font-semibold text-white">Approve</button>
-                    <button name="action" value="reject" className="rounded bg-berry px-2 py-1 text-xs font-semibold text-white">Reject</button>
-                    <button name="action" value="feature" className="rounded bg-amber px-2 py-1 text-xs font-semibold text-ink">Feature</button>
-                    <button name="action" value="delete" className="rounded border border-ink/15 px-2 py-1 text-xs font-semibold">Delete</button>
-                  </form>
-                </td>
-              </tr>
-            ))}
-            {!events.length && <tr><td colSpan={7} className="p-4 text-ink/60">No event cards yet. Run the bot or submit an event to create pending cards.</td></tr>}
-          </tbody>
-        </table>
+        <div className="grid gap-4 p-4">
+          {events.map((event) => (
+            <article key={event.id} className="rounded border border-ink/10 bg-paper p-4">
+              <form action={`/api/admin/events/${event.id}`} method="post" className="grid gap-3">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <Link href={`/events/${event.slug}`} className="text-lg font-bold text-ink">{event.title}</Link>
+                    <p className="mt-1 text-sm text-ink/60">
+                      {formatEventDate(event)} · {event.city.name} · {event.category.name}
+                    </p>
+                    <p className="mt-1 text-xs uppercase tracking-wide text-ink/45">
+                      {event.source_url ? "Imported" : "Manual"} · {event.status}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button name="action" value="save" className="rounded bg-lake px-3 py-2 text-xs font-semibold text-white">Save</button>
+                    <button name="action" value="approve" className="rounded bg-leaf px-3 py-2 text-xs font-semibold text-white">Approve</button>
+                    <button name="action" value="reject" className="rounded bg-berry px-3 py-2 text-xs font-semibold text-white">Reject</button>
+                    <button name="action" value="delete" className="rounded border border-ink/15 px-3 py-2 text-xs font-semibold">Delete</button>
+                  </div>
+                </div>
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                  <label className="text-sm font-medium xl:col-span-2">Title<input required name="title" defaultValue={event.title} className="focus-ring mt-1 min-h-10 w-full rounded border border-ink/15 bg-white px-3" /></label>
+                  <label className="text-sm font-medium">Start<input required type="datetime-local" name="start_datetime" defaultValue={dateTimeInputValue(event.start_datetime)} className="focus-ring mt-1 min-h-10 w-full rounded border border-ink/15 bg-white px-3" /></label>
+                  <label className="text-sm font-medium">End<input required type="datetime-local" name="end_datetime" defaultValue={dateTimeInputValue(event.end_datetime)} className="focus-ring mt-1 min-h-10 w-full rounded border border-ink/15 bg-white px-3" /></label>
+                  <label className="text-sm font-medium">Venue<input required name="venue_name" defaultValue={event.venue_name} className="focus-ring mt-1 min-h-10 w-full rounded border border-ink/15 bg-white px-3" /></label>
+                  <label className="text-sm font-medium">Address<input required name="address" defaultValue={event.address} className="focus-ring mt-1 min-h-10 w-full rounded border border-ink/15 bg-white px-3" /></label>
+                  <label className="text-sm font-medium">City<select required name="city_id" defaultValue={event.city_id} className="focus-ring mt-1 min-h-10 w-full rounded border border-ink/15 bg-white px-3">{cities.map((city) => <option key={city.id} value={city.id}>{city.name}</option>)}</select></label>
+                  <label className="text-sm font-medium">Category<select required name="category_id" defaultValue={event.category_id} className="focus-ring mt-1 min-h-10 w-full rounded border border-ink/15 bg-white px-3">{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
+                  <label className="text-sm font-medium">Cost<input required name="price_text" defaultValue={event.price_text} className="focus-ring mt-1 min-h-10 w-full rounded border border-ink/15 bg-white px-3" /></label>
+                  <label className="text-sm font-medium">Status<select name="status" defaultValue={event.status} className="focus-ring mt-1 min-h-10 w-full rounded border border-ink/15 bg-white px-3"><option value="draft">Draft</option><option value="pending">Pending</option><option value="published">Published</option><option value="rejected">Rejected</option></select></label>
+                  <label className="text-sm font-medium">Organizer<input required name="organizer_name" defaultValue={event.organizer_name} className="focus-ring mt-1 min-h-10 w-full rounded border border-ink/15 bg-white px-3" /></label>
+                  <label className="text-sm font-medium">Organizer email<input required type="email" name="organizer_email" defaultValue={event.organizer_email} className="focus-ring mt-1 min-h-10 w-full rounded border border-ink/15 bg-white px-3" /></label>
+                  <label className="text-sm font-medium xl:col-span-2">Original event URL<input type="url" name="event_url" defaultValue={event.event_url ?? ""} className="focus-ring mt-1 min-h-10 w-full rounded border border-ink/15 bg-white px-3" /></label>
+                  <div className="flex flex-wrap items-center gap-4 xl:col-span-2">
+                    <label className="flex min-h-10 items-center gap-2 text-sm font-medium"><input type="checkbox" name="is_free" value="1" defaultChecked={event.is_free} /> Free</label>
+                    <label className="flex min-h-10 items-center gap-2 text-sm font-medium"><input type="checkbox" name="is_family_friendly" value="1" defaultChecked={event.is_family_friendly} /> Family-friendly</label>
+                    <label className="flex min-h-10 items-center gap-2 text-sm font-medium"><input type="checkbox" name="is_featured" value="1" defaultChecked={event.is_featured} /> Featured</label>
+                  </div>
+                  <label className="text-sm font-medium xl:col-span-4">Description<textarea required name="description" rows={4} defaultValue={event.description} className="focus-ring mt-1 w-full rounded border border-ink/15 bg-white px-3 py-2" /></label>
+                </div>
+              </form>
+            </article>
+          ))}
+          {!events.length && <p className="rounded bg-paper p-4 text-ink/60">No event cards yet. Run the bot or submit an event to create pending cards.</p>}
+        </div>
       </div>
     </PageShell>
   );
