@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { PageShell } from "@/components/page-shell";
 import { adminCookieName, getAdminPassword } from "@/lib/admin/auth";
 import { formatEventDate } from "@/lib/format";
-import { getCategories, getCities, getEvents, getEventSources } from "@/lib/data";
+import { getCategories, getCities, getEvents, getEventSources, getNewsletterSubscribers } from "@/lib/data";
 
 export const metadata: Metadata = {
   title: "Admin"
@@ -19,8 +19,9 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   const params = await searchParams;
   if (token !== expected) redirect("/admin/login");
 
-  const [events, cities, categories, sources] = await Promise.all([getEvents({}, true), getCities(), getCategories(), getEventSources()]);
+  const [events, cities, categories, sources, subscribers] = await Promise.all([getEvents({}, true), getCities(), getCategories(), getEventSources(), getNewsletterSubscribers()]);
   const pendingEvents = events.filter((event) => event.status === "pending");
+  const publishedEvents = events.filter((event) => event.status === "published");
   const needsSeed = cities.length === 0 || categories.length === 0;
 
   return (
@@ -107,6 +108,21 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
           Event card was not saved. Check the start date, end date, and status.
         </div>
       )}
+      {params.newsletter === "sent" && (
+        <div className="rounded border border-leaf/20 bg-leaf/10 p-3 text-sm font-medium text-leaf">
+          Newsletter sent to {params.count} subscriber{params.count === "1" ? "" : "s"} with {params.events} event{params.events === "1" ? "" : "s"}.
+        </div>
+      )}
+      {params.newsletter === "needs-sendgrid" && (
+        <div className="rounded border border-amber/25 bg-amber/10 p-3 text-sm font-medium text-ink">
+          Add `SENDGRID_API_KEY` and `SENDGRID_FROM_EMAIL` in Vercel before sending the newsletter.
+        </div>
+      )}
+      {params.newsletter === "error" && (
+        <div className="rounded border border-berry/25 bg-berry/10 p-3 text-sm font-medium text-berry">
+          Newsletter failed to send. Check Vercel logs and confirm your SendGrid sender is verified.
+        </div>
+      )}
       {needsSeed && (
         <section className="rounded border border-amber/25 bg-amber/10 p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -150,6 +166,24 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
             <button className="min-h-10 rounded bg-lake px-3 py-2 font-semibold text-white">Save Source</button>
           </div>
         </form>
+      </section>
+      <section className="rounded border border-ink/10 bg-white p-5 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-bold">Weekly email</h2>
+            <p className="mt-1 text-sm text-ink/65">
+              Send the top published events for the next 7 days through SendGrid.
+            </p>
+          </div>
+          <form action="/api/admin/newsletter/send" method="post">
+            <button className="min-h-11 rounded bg-ink px-4 py-2 font-semibold text-white">Send Weekly Email</button>
+          </form>
+        </div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <div className="rounded bg-paper p-3"><span className="text-2xl font-bold">{subscribers.length}</span><span className="block text-sm text-ink/60">subscribers</span></div>
+          <div className="rounded bg-paper p-3"><span className="text-2xl font-bold">{publishedEvents.length}</span><span className="block text-sm text-ink/60">published events</span></div>
+          <div className="rounded bg-paper p-3"><span className="text-2xl font-bold">{publishedEvents.filter((event) => event.is_featured).length}</span><span className="block text-sm text-ink/60">featured</span></div>
+        </div>
       </section>
       <section className="rounded border border-ink/10 bg-white shadow-sm">
         <div className="border-b border-ink/10 p-4">

@@ -66,6 +66,14 @@ export type EventSourceWithRelations = EventSource & {
   category: Category | null;
 };
 
+export type NewsletterSubscriber = {
+  id: string;
+  email: string;
+  preferred_city_id: string | null;
+  interests: string[];
+  created_at: string;
+};
+
 export type EventWithRelations = Event & {
   city: City;
   category: Category;

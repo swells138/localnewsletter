@@ -1,7 +1,7 @@
 import { addDays, endOfDay, isWithinInterval, parseISO, startOfDay } from "date-fns";
 import { categories as sampleCategories, cities as sampleCities } from "@/lib/sample-data";
 import { getSql, hasDatabaseConfig } from "@/lib/db";
-import type { Category, City, Event, EventFilters, EventSource, EventSourceWithRelations, EventWithRelations } from "@/lib/types";
+import type { Category, City, Event, EventFilters, EventSource, EventSourceWithRelations, EventWithRelations, NewsletterSubscriber } from "@/lib/types";
 
 const siteNow = () => new Date();
 
@@ -125,4 +125,13 @@ export const getEventSources = async (): Promise<EventSourceWithRelations[]> => 
     city: cities.find((city) => city.id === source.city_id) ?? null,
     category: categories.find((category) => category.id === source.category_id) ?? null
   }));
+};
+
+export const getNewsletterSubscribers = async (): Promise<NewsletterSubscriber[]> => {
+  if (!hasDatabaseConfig) return [];
+  try {
+    return (await getSql()`select * from newsletter_subscribers order by created_at desc`) as NewsletterSubscriber[];
+  } catch {
+    return [];
+  }
 };

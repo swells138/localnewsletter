@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { EventCard } from "@/components/event-card";
 import { FilterBar } from "@/components/filter-bar";
+import { NewsletterForm } from "@/components/newsletter-form";
 import { PageShell } from "@/components/page-shell";
 import { getCategories, getCities, getEvents } from "@/lib/data";
 
@@ -39,6 +40,13 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
         {events.map((event) => <EventCard key={event.id} event={event} />)}
         {!events.length && <p className="rounded border border-ink/10 bg-white p-4 text-sm text-ink/60 md:col-span-2 lg:col-span-3">No approved events match these filters yet.</p>}
       </div>
+      <section className="grid gap-4">
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-wide text-ink/50">Email</p>
+          <h2 className="text-2xl font-bold">Get the top events this week</h2>
+        </div>
+        <NewsletterForm cities={cities} categories={categories} />
+      </section>
     </PageShell>
   );
 }

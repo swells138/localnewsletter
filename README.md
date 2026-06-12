@@ -88,6 +88,8 @@ Add these environment variables in Vercel:
 - `ADMIN_PASSWORD`
 - `OPENAI_API_KEY`
 - `OPENAI_MODEL`
+- `SENDGRID_API_KEY`
+- `SENDGRID_FROM_EMAIL`
 
 Use the default Next.js build command:
 
