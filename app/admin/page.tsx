@@ -236,54 +236,68 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
         </div>
         <div className="grid gap-4 p-4">
           {sources.map((source) => (
-            <div key={source.id} className="rounded border border-ink/10 bg-paper p-4">
-              <form action="/api/admin/sources" method="post" className="grid gap-3 lg:grid-cols-[1fr_1.2fr_0.9fr_0.9fr_auto] lg:items-end">
-                <input type="hidden" name="id" value={source.id} />
-                <input type="hidden" name="action" value="save" />
-                <label className="text-sm font-medium">
-                  Source name
-                  <input required name="name" defaultValue={source.name} className="focus-ring mt-1 min-h-10 w-full rounded border border-ink/15 bg-white px-3" />
-                </label>
-                <label className="text-sm font-medium">
-                  URL
-                  <input required type="url" name="url" defaultValue={source.url} className="focus-ring mt-1 min-h-10 w-full rounded border border-ink/15 bg-white px-3" />
-                </label>
-                <label className="text-sm font-medium">
-                  Default city
-                  <select name="city_id" defaultValue={source.city_id ?? ""} className="focus-ring mt-1 min-h-10 w-full rounded border border-ink/15 bg-white px-3">
-                    <option value="">Auto city</option>
-                    {cities.map((city) => <option key={city.id} value={city.id}>{city.name}</option>)}
-                  </select>
-                </label>
-                <label className="text-sm font-medium">
-                  Default category
-                  <select name="category_id" defaultValue={source.category_id ?? ""} className="focus-ring mt-1 min-h-10 w-full rounded border border-ink/15 bg-white px-3">
-                    <option value="">Auto category</option>
-                    {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
-                  </select>
-                </label>
-                <button className="min-h-10 rounded bg-lake px-3 py-2 text-sm font-semibold text-white">Save</button>
-                <label className="flex min-h-10 items-center gap-2 text-sm font-medium">
-                  <input type="checkbox" name="is_active" value="1" defaultChecked={source.is_active} /> Active
-                </label>
-                <label className="text-sm font-medium lg:col-span-3">
-                  Notes
-                  <textarea name="notes" rows={2} defaultValue={source.notes ?? ""} className="focus-ring mt-1 w-full rounded border border-ink/15 bg-white px-3 py-2" />
-                </label>
-                <p className="text-sm text-ink/60 lg:text-right">
-                  Last checked: {source.last_checked_at ? new Date(source.last_checked_at).toLocaleString() : "Not checked"}
-                </p>
-              </form>
-              <form action="/api/admin/sources" method="post" className="mt-3">
-                <input type="hidden" name="id" value={source.id} />
-                <input type="hidden" name="action" value="delete" />
-                <input type="hidden" name="name" value={source.name} />
-                <input type="hidden" name="url" value={source.url} />
-                <input type="hidden" name="city_id" value={source.city_id ?? ""} />
-                <input type="hidden" name="category_id" value={source.category_id ?? ""} />
-                <button className="rounded border border-berry/30 px-3 py-2 text-xs font-semibold text-berry">Delete Source</button>
-              </form>
-            </div>
+            <details key={source.id} className="rounded border border-ink/10 bg-paper p-4">
+              <summary className="cursor-pointer list-none">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <h3 className="font-semibold">{source.name}</h3>
+                    <p className="truncate text-sm text-ink/60">{source.url}</p>
+                    <p className="mt-1 text-xs uppercase tracking-wide text-ink/45">
+                      {source.is_active ? "Active" : "Paused"} · {source.city?.name ?? "Auto city"} · {source.category?.name ?? "Auto category"} · Last checked: {source.last_checked_at ? new Date(source.last_checked_at).toLocaleString() : "Not checked"}
+                    </p>
+                  </div>
+                  <form action="/api/admin/import" method="post">
+                    <input type="hidden" name="source_id" value={source.id} />
+                    <button className="min-h-10 rounded bg-berry px-3 py-2 text-sm font-semibold text-white">Run Source</button>
+                  </form>
+                </div>
+              </summary>
+              <div className="mt-4 border-t border-ink/10 pt-4">
+                <form action="/api/admin/sources" method="post" className="grid gap-3 lg:grid-cols-[1fr_1.2fr_0.9fr_0.9fr_auto] lg:items-end">
+                  <input type="hidden" name="id" value={source.id} />
+                  <input type="hidden" name="action" value="save" />
+                  <label className="text-sm font-medium">
+                    Source name
+                    <input required name="name" defaultValue={source.name} className="focus-ring mt-1 min-h-10 w-full rounded border border-ink/15 bg-white px-3" />
+                  </label>
+                  <label className="text-sm font-medium">
+                    URL
+                    <input required type="url" name="url" defaultValue={source.url} className="focus-ring mt-1 min-h-10 w-full rounded border border-ink/15 bg-white px-3" />
+                  </label>
+                  <label className="text-sm font-medium">
+                    Default city
+                    <select name="city_id" defaultValue={source.city_id ?? ""} className="focus-ring mt-1 min-h-10 w-full rounded border border-ink/15 bg-white px-3">
+                      <option value="">Auto city</option>
+                      {cities.map((city) => <option key={city.id} value={city.id}>{city.name}</option>)}
+                    </select>
+                  </label>
+                  <label className="text-sm font-medium">
+                    Default category
+                    <select name="category_id" defaultValue={source.category_id ?? ""} className="focus-ring mt-1 min-h-10 w-full rounded border border-ink/15 bg-white px-3">
+                      <option value="">Auto category</option>
+                      {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+                    </select>
+                  </label>
+                  <button className="min-h-10 rounded bg-lake px-3 py-2 text-sm font-semibold text-white">Save</button>
+                  <label className="flex min-h-10 items-center gap-2 text-sm font-medium">
+                    <input type="checkbox" name="is_active" value="1" defaultChecked={source.is_active} /> Active
+                  </label>
+                  <label className="text-sm font-medium lg:col-span-3">
+                    Notes
+                    <textarea name="notes" rows={2} defaultValue={source.notes ?? ""} className="focus-ring mt-1 w-full rounded border border-ink/15 bg-white px-3 py-2" />
+                  </label>
+                </form>
+                <form action="/api/admin/sources" method="post" className="mt-3">
+                  <input type="hidden" name="id" value={source.id} />
+                  <input type="hidden" name="action" value="delete" />
+                  <input type="hidden" name="name" value={source.name} />
+                  <input type="hidden" name="url" value={source.url} />
+                  <input type="hidden" name="city_id" value={source.city_id ?? ""} />
+                  <input type="hidden" name="category_id" value={source.category_id ?? ""} />
+                  <button className="rounded border border-berry/30 px-3 py-2 text-xs font-semibold text-berry">Delete Source</button>
+                </form>
+              </div>
+            </details>
           ))}
           {!sources.length && <p className="text-sm text-ink/60">No sources yet. Add a city, venue, library, chamber, or events calendar URL to start.</p>}
         </div>

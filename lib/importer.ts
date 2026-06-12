@@ -40,6 +40,15 @@ const slugify = (value: string) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
 
+const normalizeTitle = (value: string) =>
+  value
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/\b(the|a|an|and|at|in|of|for|with)\b/g, " ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
 const toIso = (value?: string) => {
   if (!value) return null;
   const parsed = new Date(value);
@@ -283,7 +292,20 @@ export const runEventImport = async (sources: EventSourceWithRelations[], cities
           ? await sql`select id from events where event_url = ${eventUrl} or slug = ${slugBase} limit 1`
           : await sql`select id from events where slug = ${slugBase} limit 1`;
 
-        if (existing?.length) {
+        const sameDayEvents = (await sql`
+          select title from events
+          where city_id = ${city.id}
+            and start_datetime >= ${start.slice(0, 10)}::date
+            and start_datetime < (${start.slice(0, 10)}::date + interval '1 day')
+          limit 50
+        `) as Array<{ title: string }>;
+        const normalizedTitle = normalizeTitle(title);
+        const hasSimilarTitle = sameDayEvents.some((event) => {
+          const otherTitle = normalizeTitle(event.title);
+          return otherTitle === normalizedTitle || otherTitle.includes(normalizedTitle) || normalizedTitle.includes(otherTitle);
+        });
+
+        if (existing?.length || hasSimilarTitle) {
           result.skipped += 1;
           result.duplicates += 1;
           continue;

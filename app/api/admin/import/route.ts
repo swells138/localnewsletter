@@ -11,8 +11,11 @@ export async function POST(request: Request) {
     return redirectAfterPost("/admin?import=needs-database", request.url);
   }
 
+  const form = await request.formData();
+  const sourceId = String(form.get("source_id") ?? "");
   const [sources, cities, categories] = await Promise.all([getEventSources(), getCities(), getCategories()]);
-  const result = await runEventImport(sources, cities, categories);
+  const selectedSources = sourceId ? sources.filter((source) => source.id === sourceId) : sources;
+  const result = await runEventImport(selectedSources, cities, categories);
   const params = new URLSearchParams({
     import: "complete",
     checked: String(result.checked),
