@@ -1,7 +1,7 @@
 import { addDays } from "date-fns";
 import { isAdminRequest } from "@/lib/admin/auth";
 import { getEvents, getNewsletterSubscribers } from "@/lib/data";
-import { hasSendGridConfig, sendWeeklyNewsletter } from "@/lib/newsletter";
+import { hasSendGridConfig, sendGridErrorCode, sendWeeklyNewsletter } from "@/lib/newsletter";
 import { redirectAfterPost } from "@/lib/redirect";
 
 export async function POST(request: Request) {
@@ -23,6 +23,6 @@ export async function POST(request: Request) {
     return redirectAfterPost(`/admin?newsletter=sent&count=${result.sent}&events=${topEvents.length}`, request.url);
   } catch (error) {
     console.error("Failed to send newsletter", error);
-    return redirectAfterPost("/admin?newsletter=error", request.url);
+    return redirectAfterPost(`/admin?newsletter=${sendGridErrorCode(error)}`, request.url);
   }
 }

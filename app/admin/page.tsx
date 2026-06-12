@@ -123,6 +123,26 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
           Newsletter failed to send. Check Vercel logs and confirm your SendGrid sender is verified.
         </div>
       )}
+      {params.newsletter === "sendgrid-auth" && (
+        <div className="rounded border border-berry/25 bg-berry/10 p-3 text-sm font-medium text-berry">
+          SendGrid rejected the API key. Check `SENDGRID_API_KEY` in Vercel and redeploy.
+        </div>
+      )}
+      {params.newsletter === "sendgrid-forbidden" && (
+        <div className="rounded border border-berry/25 bg-berry/10 p-3 text-sm font-medium text-berry">
+          SendGrid says this API key is not allowed to send mail. Give the key Mail Send permission or create a new key.
+        </div>
+      )}
+      {params.newsletter === "sendgrid-sender" && (
+        <div className="rounded border border-berry/25 bg-berry/10 p-3 text-sm font-medium text-berry">
+          SendGrid rejected the sender. Verify `SENDGRID_FROM_EMAIL` in SendGrid Sender Authentication and Vercel.
+        </div>
+      )}
+      {params.newsletter === "sendgrid-bad-request" && (
+        <div className="rounded border border-berry/25 bg-berry/10 p-3 text-sm font-medium text-berry">
+          SendGrid rejected the email request. Check Vercel logs for the exact SendGrid message.
+        </div>
+      )}
       {params.newsletter === "test-sent" && (
         <div className="rounded border border-leaf/20 bg-leaf/10 p-3 text-sm font-medium text-leaf">
           Test email sent to {params.email}.

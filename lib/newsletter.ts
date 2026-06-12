@@ -17,6 +17,32 @@ const fromEmail = () => process.env.SENDGRID_FROM_EMAIL || process.env.NEWSLETTE
 
 export const hasSendGridConfig = () => Boolean(process.env.SENDGRID_API_KEY && fromEmail());
 
+export class SendGridMailError extends Error {
+  status: number;
+  body: string;
+
+  constructor(status: number, body: string) {
+    super(`SendGrid error ${status}: ${body}`);
+    this.name = "SendGridMailError";
+    this.status = status;
+    this.body = body;
+  }
+}
+
+export const sendGridErrorCode = (error: unknown) => {
+  if (error instanceof SendGridMailError) {
+    if (error.status === 401) return "sendgrid-auth";
+    if (error.status === 403) return "sendgrid-forbidden";
+    if (error.status === 400) {
+      const body = error.body.toLowerCase();
+      if (body.includes("from") || body.includes("sender")) return "sendgrid-sender";
+      return "sendgrid-bad-request";
+    }
+  }
+
+  return "error";
+};
+
 const eventLink = (event: EventWithRelations) => validExternalUrl(event.event_url) ?? `${siteUrl()}/events/${event.slug}`;
 
 const renderHtml = (events: EventWithRelations[]) => {
@@ -84,7 +110,7 @@ export const sendWeeklyNewsletter = async ({ events, subscribers }: SendNewslett
 
   if (!response.ok) {
     const message = await response.text();
-    throw new Error(`SendGrid error ${response.status}: ${message}`);
+    throw new SendGridMailError(response.status, message);
   }
 
   return { sent: subscribers.length };
@@ -133,7 +159,7 @@ export const sendTestEmail = async ({ to, subject, text, html }: SendEmailInput)
 
   if (!response.ok) {
     const message = await response.text();
-    throw new Error(`SendGrid error ${response.status}: ${message}`);
+    throw new SendGridMailError(response.status, message);
   }
 
   return { sent: 1 };

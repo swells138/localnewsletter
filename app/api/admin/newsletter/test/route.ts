@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { isAdminRequest } from "@/lib/admin/auth";
-import { hasSendGridConfig, sendTestEmail } from "@/lib/newsletter";
+import { hasSendGridConfig, sendGridErrorCode, sendTestEmail } from "@/lib/newsletter";
 import { redirectAfterPost } from "@/lib/redirect";
 
 const schema = z.object({
@@ -25,6 +25,6 @@ export async function POST(request: Request) {
     return redirectAfterPost(`/admin?newsletter=test-sent&email=${encodeURIComponent(parsed.data.email)}`, request.url);
   } catch (error) {
     console.error("Failed to send test newsletter", error);
-    return redirectAfterPost("/admin?newsletter=error", request.url);
+    return redirectAfterPost(`/admin?newsletter=${sendGridErrorCode(error)}`, request.url);
   }
 }
