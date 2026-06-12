@@ -6,6 +6,13 @@ type SendNewsletterInput = {
   subscribers: NewsletterSubscriber[];
 };
 
+type SendEmailInput = {
+  to: string;
+  subject: string;
+  text: string;
+  html: string;
+};
+
 const fromEmail = () => process.env.SENDGRID_FROM_EMAIL || process.env.NEWSLETTER_FROM_EMAIL;
 
 export const hasSendGridConfig = () => Boolean(process.env.SENDGRID_API_KEY && fromEmail());
@@ -66,23 +73,13 @@ export const sendWeeklyNewsletter = async ({ events, subscribers }: SendNewslett
     throw new Error("No published events available to send.");
   }
 
-  const response = await fetch("https://api.sendgrid.com/v3/mail/send", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${process.env.SENDGRID_API_KEY}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      personalizations: subscribers.map((subscriber) => ({
-        to: [{ email: subscriber.email }]
-      })),
-      from: { email: fromEmail(), name: "NEO Weekend Guide" },
-      subject: "Top Northeast Ohio events this week",
-      content: [
-        { type: "text/plain", value: renderText(events) },
-        { type: "text/html", value: renderHtml(events) }
-      ]
-    })
+  const response = await sendSendGridEmail({
+    personalizations: subscribers.map((subscriber) => ({
+      to: [{ email: subscriber.email }]
+    })),
+    subject: "Top Northeast Ohio events this week",
+    text: renderText(events),
+    html: renderHtml(events)
   });
 
   if (!response.ok) {
@@ -91,4 +88,53 @@ export const sendWeeklyNewsletter = async ({ events, subscribers }: SendNewslett
   }
 
   return { sent: subscribers.length };
+};
+
+const sendSendGridEmail = async ({
+  personalizations,
+  subject,
+  text,
+  html
+}: {
+  personalizations: Array<{ to: Array<{ email: string }> }>;
+  subject: string;
+  text: string;
+  html: string;
+}) => {
+  return fetch("https://api.sendgrid.com/v3/mail/send", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env.SENDGRID_API_KEY}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      personalizations,
+      from: { email: fromEmail(), name: "NEO Weekend Guide" },
+      subject,
+      content: [
+        { type: "text/plain", value: text },
+        { type: "text/html", value: html }
+      ]
+    })
+  });
+};
+
+export const sendTestEmail = async ({ to, subject, text, html }: SendEmailInput) => {
+  if (!hasSendGridConfig()) {
+    throw new Error("Missing SENDGRID_API_KEY or SENDGRID_FROM_EMAIL.");
+  }
+
+  const response = await sendSendGridEmail({
+    personalizations: [{ to: [{ email: to }] }],
+    subject,
+    text,
+    html
+  });
+
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(`SendGrid error ${response.status}: ${message}`);
+  }
+
+  return { sent: 1 };
 };

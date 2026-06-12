@@ -123,6 +123,16 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
           Newsletter failed to send. Check Vercel logs and confirm your SendGrid sender is verified.
         </div>
       )}
+      {params.newsletter === "test-sent" && (
+        <div className="rounded border border-leaf/20 bg-leaf/10 p-3 text-sm font-medium text-leaf">
+          Test email sent to {params.email}.
+        </div>
+      )}
+      {params.newsletter === "invalid-test-email" && (
+        <div className="rounded border border-berry/25 bg-berry/10 p-3 text-sm font-medium text-berry">
+          Enter a valid test email address.
+        </div>
+      )}
       {needsSeed && (
         <section className="rounded border border-amber/25 bg-amber/10 p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -184,6 +194,13 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
           <div className="rounded bg-paper p-3"><span className="text-2xl font-bold">{publishedEvents.length}</span><span className="block text-sm text-ink/60">published events</span></div>
           <div className="rounded bg-paper p-3"><span className="text-2xl font-bold">{publishedEvents.filter((event) => event.is_featured).length}</span><span className="block text-sm text-ink/60">featured</span></div>
         </div>
+        <form action="/api/admin/newsletter/test" method="post" className="mt-4 grid gap-3 border-t border-ink/10 pt-4 sm:grid-cols-[1fr_auto]">
+          <label className="text-sm font-medium">
+            Test recipient
+            <input required type="email" name="email" placeholder="you@example.com" className="focus-ring mt-1 min-h-11 w-full rounded border border-ink/15 px-3" />
+          </label>
+          <button className="min-h-11 self-end rounded border border-ink/15 bg-white px-4 py-2 font-semibold text-ink">Send Test Email</button>
+        </form>
       </section>
       <section className="rounded border border-ink/10 bg-white shadow-sm">
         <div className="border-b border-ink/10 p-4">
