@@ -5,6 +5,8 @@ import type { EventWithRelations } from "@/lib/types";
 
 export function EventCard({ event, compact = false }: { event: EventWithRelations; compact?: boolean }) {
   const eventUrl = validExternalUrl(event.event_url);
+  const location = [event.city.name, event.venue_name].filter(Boolean).join(" · ");
+  const categoryLine = [event.category.name, event.price_text].filter(Boolean).join(" · ");
 
   return (
     <article className="rounded border border-ink/10 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-soft">
@@ -18,8 +20,8 @@ export function EventCard({ event, compact = false }: { event: EventWithRelation
       </h3>
       <div className="mt-3 grid gap-2 text-sm text-ink/70">
         <p className="flex gap-2"><Calendar className="mt-0.5 shrink-0 text-lake" size={16} /> {formatEventDate(event)}</p>
-        <p className="flex gap-2"><MapPin className="mt-0.5 shrink-0 text-berry" size={16} /> {event.city.name} · {event.venue_name}</p>
-        <p className="flex gap-2"><Tag className="mt-0.5 shrink-0 text-leaf" size={16} /> {event.category.name} · {event.price_text}</p>
+        {location && <p className="flex gap-2"><MapPin className="mt-0.5 shrink-0 text-berry" size={16} /> {location}</p>}
+        {categoryLine && <p className="flex gap-2"><Tag className="mt-0.5 shrink-0 text-leaf" size={16} /> {categoryLine}</p>}
       </div>
       {!compact && <p className="mt-3 line-clamp-3 text-sm leading-6 text-ink/72">{event.description}</p>}
       <div className="mt-4 flex flex-wrap gap-2">

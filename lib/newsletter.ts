@@ -49,14 +49,16 @@ const renderHtml = (events: EventWithRelations[]) => {
   const items = events
     .map((event) => {
       const url = eventLink(event);
+      const location = [event.venue_name, event.city.name].filter(Boolean).join(" · ");
+      const category = [event.price_text, event.category.name].filter(Boolean).join(" · ");
       return `
         <li style="margin:0 0 18px;padding:0 0 18px;border-bottom:1px solid #e5e0d8;">
           <h2 style="margin:0 0 6px;font-size:18px;line-height:1.3;">
             <a href="${url}" style="color:#216f80;text-decoration:none;">${event.title}</a>
           </h2>
           <p style="margin:0 0 4px;color:#42514d;">${formatEventDate(event)}</p>
-          <p style="margin:0 0 4px;color:#42514d;">${event.venue_name} · ${event.city.name}</p>
-          <p style="margin:0;color:#42514d;">${event.price_text} · ${event.category.name}</p>
+          ${location ? `<p style="margin:0 0 4px;color:#42514d;">${location}</p>` : ""}
+          ${category ? `<p style="margin:0;color:#42514d;">${category}</p>` : ""}
         </li>
       `;
     })
@@ -76,14 +78,16 @@ const renderText = (events: EventWithRelations[]) =>
   [
     "Top Northeast Ohio events this week",
     "",
-    ...events.flatMap((event) => [
-      event.title,
-      formatEventDate(event),
-      `${event.venue_name} · ${event.city.name}`,
-      `${event.price_text} · ${event.category.name}`,
-      eventLink(event),
-      ""
-    ])
+    ...events.flatMap((event) =>
+      [
+        event.title,
+        formatEventDate(event),
+        [event.venue_name, event.city.name].filter(Boolean).join(" · "),
+        [event.price_text, event.category.name].filter(Boolean).join(" · "),
+        eventLink(event),
+        ""
+      ].filter((line) => line !== "")
+    )
   ].join("\n");
 
 export const sendWeeklyNewsletter = async ({ events, subscribers }: SendNewsletterInput) => {

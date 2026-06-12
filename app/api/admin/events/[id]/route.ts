@@ -1,4 +1,3 @@
-import { NextResponse } from "next/server";
 import { isAdminRequest } from "@/lib/admin/auth";
 import { getSql, hasDatabaseConfig } from "@/lib/db";
 import { redirectAfterPost } from "@/lib/redirect";
@@ -8,6 +7,11 @@ const eventStatuses = new Set(["draft", "pending", "published", "rejected"]);
 const toIso = (value: FormDataEntryValue | null) => {
   const date = new Date(String(value ?? ""));
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
+};
+
+const optionalString = (value: FormDataEntryValue | null) => {
+  const text = String(value ?? "").trim();
+  return text ? text : null;
 };
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -41,16 +45,18 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
           description = ${String(form.get("description") ?? "")},
           start_datetime = ${start},
           end_datetime = ${end},
-          venue_name = ${String(form.get("venue_name") ?? "")},
-          address = ${String(form.get("address") ?? "")},
+          has_start_time = ${form.get("has_start_time") === "1"},
+          has_end_time = ${form.get("has_end_time") === "1"},
+          venue_name = ${optionalString(form.get("venue_name"))},
+          address = ${optionalString(form.get("address"))},
           city_id = ${String(form.get("city_id") ?? "")},
           category_id = ${String(form.get("category_id") ?? "")},
-          price_text = ${String(form.get("price_text") ?? "")},
+          price_text = ${optionalString(form.get("price_text"))},
           is_free = ${form.get("is_free") === "1"},
           is_family_friendly = ${form.get("is_family_friendly") === "1"},
-          event_url = ${String(form.get("event_url") ?? "")},
-          organizer_name = ${String(form.get("organizer_name") ?? "")},
-          organizer_email = ${String(form.get("organizer_email") ?? "")},
+          event_url = ${optionalString(form.get("event_url"))},
+          organizer_name = ${optionalString(form.get("organizer_name"))},
+          organizer_email = ${optionalString(form.get("organizer_email"))},
           status = ${status},
           is_featured = ${form.get("is_featured") === "1"}
         where id = ${id}

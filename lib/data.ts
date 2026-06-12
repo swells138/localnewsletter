@@ -15,6 +15,8 @@ const normalizeEvent = (event: Event): Event => ({
   ...event,
   start_datetime: toIsoString(event.start_datetime),
   end_datetime: toIsoString(event.end_datetime),
+  has_start_time: event.has_start_time ?? true,
+  has_end_time: event.has_end_time ?? true,
   imported_at: event.imported_at ? toIsoString(event.imported_at) : null,
   created_at: toIsoString(event.created_at),
   updated_at: toIsoString(event.updated_at)
@@ -87,7 +89,7 @@ export const getEvents = async (filters: EventFilters = {}, includePending = fal
   }
   if (filters.date === "next-7-days") end = addDays(start, 7);
 
-  if (!["tomorrow", "this-weekend"].includes(filters.date ?? "")) {
+  if (!includePending && !["tomorrow", "this-weekend"].includes(filters.date ?? "")) {
     rows = rows.filter((event) => isWithinInterval(parseISO(event.start_datetime), { start, end }));
   }
 

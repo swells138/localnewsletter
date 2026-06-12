@@ -1,4 +1,3 @@
-import { addHours, parseISO } from "date-fns";
 import { getSql } from "@/lib/db";
 import type { Category, City, EventSourceWithRelations } from "@/lib/types";
 
@@ -7,6 +6,8 @@ type ImportedCandidate = {
   description: string;
   start_datetime: string;
   end_datetime?: string;
+  has_start_time?: boolean;
+  has_end_time?: boolean;
   venue_name?: string;
   address?: string;
   city?: string;
@@ -43,6 +44,13 @@ const toIso = (value?: string) => {
   if (!value) return null;
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+};
+
+const hasClockTime = (value?: string) => Boolean(value && /(?:t|\s)\d{1,2}:?\d{2}/i.test(value));
+
+const cleaned = (value?: string | null) => {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
 };
 
 const stripHtml = (html: string) =>
@@ -90,18 +98,23 @@ const extractJsonLdEvents = (html: string): ImportedCandidate[] => {
           const address = location.address && typeof location.address === "object" ? (location.address as Record<string, unknown>) : location.address;
           const offers = item.offers && typeof item.offers === "object" ? (item.offers as Record<string, unknown>) : {};
           const organizer = item.organizer && typeof item.organizer === "object" ? (item.organizer as Record<string, unknown>) : {};
+          const startDate = String(item.startDate ?? "");
+          const endDate = String(item.endDate ?? "");
+          const price = String(offers.price ?? offers.name ?? "");
 
           return {
             title: String(item.name ?? ""),
             description: String(item.description ?? ""),
-            start_datetime: String(item.startDate ?? ""),
-            end_datetime: String(item.endDate ?? ""),
+            start_datetime: startDate,
+            end_datetime: endDate,
+            has_start_time: hasClockTime(startDate),
+            has_end_time: hasClockTime(endDate),
             venue_name: String(location.name ?? ""),
             address: typeof address === "string" ? address : Object.values(address ?? {}).filter(Boolean).join(", "),
-            price_text: item.isAccessibleForFree === true ? "Free" : String(offers.price ?? offers.name ?? "See event page"),
+            price_text: item.isAccessibleForFree === true ? "Free" : price,
             is_free: item.isAccessibleForFree === true || String(offers.price ?? "").trim() === "0",
             event_url: String(item.url ?? offers.url ?? ""),
-            organizer_name: String(organizer.name ?? "Imported source"),
+            organizer_name: String(organizer.name ?? ""),
             image_url: Array.isArray(item.image) ? String(item.image[0] ?? "") : item.image ? String(item.image) : null,
             confidence: 0.9
           };
@@ -128,7 +141,7 @@ const extractWithAi = async (html: string, sourceUrl: string): Promise<ImportedC
       input: [
         {
           role: "system",
-          content: "Extract only real public events from the provided page text. Return compact JSON with an events array. Use ISO date strings when dates are present. Do not invent missing events."
+          content: "Extract only real public events from the provided page text. Return compact JSON with an events array. Use ISO date strings when dates are present. Do not invent missing events, times, venues, prices, links, organizers, or contact details. Use empty strings for unknown text fields."
         },
         {
           role: "user",
@@ -154,6 +167,8 @@ const extractWithAi = async (html: string, sourceUrl: string): Promise<ImportedC
                     description: { type: "string" },
                     start_datetime: { type: "string" },
                     end_datetime: { type: "string" },
+                    has_start_time: { type: "boolean" },
+                    has_end_time: { type: "boolean" },
                     venue_name: { type: "string" },
                     address: { type: "string" },
                     city: { type: "string" },
@@ -165,7 +180,7 @@ const extractWithAi = async (html: string, sourceUrl: string): Promise<ImportedC
                     organizer_name: { type: "string" },
                     confidence: { type: "number" }
                   },
-                  required: ["title", "description", "start_datetime", "end_datetime", "venue_name", "address", "city", "category", "price_text", "is_free", "is_family_friendly", "event_url", "organizer_name", "confidence"]
+                  required: ["title", "description", "start_datetime", "end_datetime", "has_start_time", "has_end_time", "venue_name", "address", "city", "category", "price_text", "is_free", "is_family_friendly", "event_url", "organizer_name", "confidence"]
                 }
               }
             },
@@ -262,9 +277,11 @@ export const runEventImport = async (sources: EventSourceWithRelations[], cities
           continue;
         }
 
-        const eventUrl = candidate.event_url?.startsWith("http") ? candidate.event_url : source.url;
+        const eventUrl = candidate.event_url?.startsWith("http") ? candidate.event_url : null;
         const slugBase = slugify(`${title}-${city.slug}-${start.slice(0, 10)}`);
-        const existing = await sql`select id from events where event_url = ${eventUrl} or slug = ${slugBase} limit 1`;
+        const existing = eventUrl
+          ? await sql`select id from events where event_url = ${eventUrl} or slug = ${slugBase} limit 1`
+          : await sql`select id from events where slug = ${slugBase} limit 1`;
 
         if (existing?.length) {
           result.skipped += 1;
@@ -272,20 +289,22 @@ export const runEventImport = async (sources: EventSourceWithRelations[], cities
           continue;
         }
 
-        const end = toIso(candidate.end_datetime) ?? addHours(parseISO(start), 2).toISOString();
+        const end = toIso(candidate.end_datetime) ?? start;
+        const hasStartTime = candidate.has_start_time ?? hasClockTime(candidate.start_datetime);
+        const hasEndTime = candidate.has_end_time ?? Boolean(candidate.end_datetime && hasClockTime(candidate.end_datetime));
         try {
           await sql`
             insert into events (
-              title, slug, description, start_datetime, end_datetime, venue_name, address,
+              title, slug, description, start_datetime, end_datetime, has_start_time, has_end_time, venue_name, address,
               city_id, category_id, price_text, is_free, is_family_friendly, event_url,
               organizer_name, organizer_email, image_url, status, is_featured, source_url,
               imported_at, import_confidence, raw_import_data
             ) values (
-              ${title}, ${slugBase}, ${candidate.description?.trim() || `Imported event from ${source.name}. Review details before publishing.`},
-              ${start}, ${end}, ${candidate.venue_name?.trim() || "Venue to confirm"}, ${candidate.address?.trim() || `${city.name}, ${city.state}`},
-              ${city.id}, ${category.id}, ${candidate.price_text?.trim() || "See event page"}, ${Boolean(candidate.is_free)},
-              ${Boolean(candidate.is_family_friendly)}, ${eventUrl}, ${candidate.organizer_name?.trim() || source.name},
-              ${"imports@example.com"}, ${candidate.image_url || null}, ${"pending"}, ${false}, ${source.url},
+              ${title}, ${slugBase}, ${cleaned(candidate.description) ?? ""},
+              ${start}, ${end}, ${hasStartTime}, ${hasEndTime}, ${cleaned(candidate.venue_name)}, ${cleaned(candidate.address)},
+              ${city.id}, ${category.id}, ${cleaned(candidate.price_text)}, ${Boolean(candidate.is_free)},
+              ${Boolean(candidate.is_family_friendly)}, ${eventUrl}, ${cleaned(candidate.organizer_name)},
+              ${null}, ${candidate.image_url || null}, ${"pending"}, ${false}, ${source.url},
               ${new Date().toISOString()}, ${candidate.confidence ?? 0.7}, ${JSON.stringify(candidate)}::jsonb
             )
           `;

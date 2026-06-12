@@ -11,9 +11,10 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const event = await getEventBySlug(slug);
   if (!event) return {};
+  const place = event.venue_name ? ` at ${event.venue_name}` : "";
   return {
     title: event.title,
-    description: `${event.title} in ${event.city.name} at ${event.venue_name}. ${formatEventDate(event)}.`,
+    description: `${event.title} in ${event.city.name}${place}. ${formatEventDate(event)}.`,
     alternates: { canonical: `/events/${event.slug}` }
   };
 }
@@ -27,6 +28,8 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
     .filter((item) => item.id !== event.id)
     .slice(0, 3);
   const eventUrl = validExternalUrl(event.event_url);
+  const locationLines = [event.venue_name, event.address].filter(Boolean);
+  const hasLocation = locationLines.length > 0;
 
   const schema = {
     "@context": "https://schema.org",
@@ -36,23 +39,23 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
     endDate: event.end_datetime,
     eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
     eventStatus: "https://schema.org/EventScheduled",
-    location: {
+    location: hasLocation ? {
       "@type": "Place",
-      name: event.venue_name,
-      address: event.address
-    },
+      name: event.venue_name ?? event.city.name,
+      address: event.address ?? event.city.name
+    } : undefined,
     image: event.image_url ? [event.image_url] : undefined,
     description: event.description,
     offers: {
       "@type": "Offer",
-      price: event.is_free ? "0" : event.price_text,
+      price: event.is_free ? "0" : event.price_text ?? "",
       url: eventUrl
     },
-    organizer: {
+    organizer: event.organizer_name ? {
       "@type": "Organization",
       name: event.organizer_name,
       url: siteUrl()
-    }
+    } : undefined
   };
 
   return (
@@ -62,7 +65,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
         <div>
           <Link href={`/categories/${event.category.slug}`} className="text-sm font-semibold uppercase tracking-wide text-lake">{event.category.name}</Link>
           <h1 className="mt-3 text-4xl font-bold tracking-tight">{event.title}</h1>
-          <p className="mt-4 max-w-3xl text-lg leading-8 text-ink/72">{event.description}</p>
+          {event.description && <p className="mt-4 max-w-3xl text-lg leading-8 text-ink/72">{event.description}</p>}
           <div className="mt-6 flex flex-wrap gap-3">
             <a href={calendarUrl(event)} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center gap-2 rounded bg-lake px-4 py-2 font-semibold text-white">
               <Calendar size={18} /> Add to calendar
@@ -77,10 +80,18 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
         <aside className="rounded border border-ink/10 bg-white p-5 shadow-sm">
           <dl className="grid gap-4 text-sm">
             <div><dt className="font-semibold text-ink">Date/time</dt><dd className="mt-1 flex gap-2 text-ink/70"><Calendar size={16} /> {formatEventDate(event)}</dd></div>
-            <div><dt className="font-semibold text-ink">Venue</dt><dd className="mt-1 flex gap-2 text-ink/70"><MapPin size={16} /> {event.venue_name}<br />{event.address}</dd></div>
+            {hasLocation && (
+              <div>
+                <dt className="font-semibold text-ink">Venue</dt>
+                <dd className="mt-1 flex gap-2 text-ink/70">
+                  <MapPin size={16} />
+                  <span>{locationLines.map((line) => <span key={line} className="block">{line}</span>)}</span>
+                </dd>
+              </div>
+            )}
             <div><dt className="font-semibold text-ink">City</dt><dd className="mt-1"><Link className="text-lake" href={`/cities/${event.city.slug}`}>{event.city.name}</Link></dd></div>
-            <div><dt className="font-semibold text-ink">Cost</dt><dd className="mt-1 text-ink/70">{event.price_text}</dd></div>
-            <div><dt className="font-semibold text-ink">Organizer</dt><dd className="mt-1 flex gap-2 text-ink/70"><User size={16} /> {event.organizer_name}</dd></div>
+            {event.price_text && <div><dt className="font-semibold text-ink">Cost</dt><dd className="mt-1 text-ink/70">{event.price_text}</dd></div>}
+            {event.organizer_name && <div><dt className="font-semibold text-ink">Organizer</dt><dd className="mt-1 flex gap-2 text-ink/70"><User size={16} /> {event.organizer_name}</dd></div>}
             <div><dt className="font-semibold text-ink">Tags</dt><dd className="mt-1 flex gap-2 text-ink/70"><Tag size={16} /> {event.is_family_friendly ? "Family-friendly" : "Adults"} · {event.is_free ? "Free" : "Paid"}</dd></div>
           </dl>
         </aside>

@@ -20,8 +20,16 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   if (token !== expected) redirect("/admin/login");
 
   const [events, cities, categories, sources, subscribers] = await Promise.all([getEvents({}, true), getCities(), getCategories(), getEventSources(), getNewsletterSubscribers()]);
+  const now = new Date();
   const pendingEvents = events.filter((event) => event.status === "pending");
   const publishedEvents = events.filter((event) => event.status === "published");
+  const expiredPublishedEvents = publishedEvents.filter((event) => new Date(event.end_datetime) < now);
+  const reviewEvents = events
+    .filter((event) => event.status !== "published" || new Date(event.end_datetime) < now)
+    .sort((a, b) => {
+      const statusOrder = { pending: 0, draft: 1, rejected: 2, published: 3 };
+      return statusOrder[a.status] - statusOrder[b.status] || a.start_datetime.localeCompare(b.start_datetime);
+    });
   const needsSeed = cities.length === 0 || categories.length === 0;
 
   return (
@@ -180,7 +188,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
           <div className="mt-4 grid gap-3 sm:grid-cols-3">
             <div className="rounded bg-paper p-3"><span className="text-2xl font-bold">{sources.length}</span><span className="block text-sm text-ink/60">sources</span></div>
             <div className="rounded bg-paper p-3"><span className="text-2xl font-bold">{pendingEvents.length}</span><span className="block text-sm text-ink/60">pending cards</span></div>
-            <div className="rounded bg-paper p-3"><span className="text-2xl font-bold">{events.filter((event) => event.source_url).length}</span><span className="block text-sm text-ink/60">imported</span></div>
+            <div className="rounded bg-paper p-3"><span className="text-2xl font-bold">{expiredPublishedEvents.length}</span><span className="block text-sm text-ink/60">expired live cards</span></div>
           </div>
         </div>
         <form action="/api/admin/sources" method="post" className="rounded border border-ink/10 bg-white p-5 shadow-sm">
@@ -282,10 +290,11 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
       </section>
       <div className="rounded border border-ink/10 bg-white shadow-sm">
         <div className="border-b border-ink/10 p-4">
-          <h2 className="text-xl font-bold">Event cards</h2>
+          <h2 className="text-xl font-bold">Review queue</h2>
+          <p className="mt-1 text-sm text-ink/60">Pending, draft, rejected, and expired published cards live here. Approved future events stay out of the way.</p>
         </div>
         <div className="grid gap-4 p-4">
-          {events.map((event) => (
+          {reviewEvents.map((event) => (
             <article key={event.id} className="rounded border border-ink/10 bg-paper p-4">
               <form action={`/api/admin/events/${event.id}`} method="post" className="grid gap-3">
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -295,7 +304,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
                       {formatEventDate(event)} · {event.city.name} · {event.category.name}
                     </p>
                     <p className="mt-1 text-xs uppercase tracking-wide text-ink/45">
-                      {event.source_url ? "Imported" : "Manual"} · {event.status}
+                      {event.source_url ? "Imported" : "Manual"} · {event.status}{event.status === "published" ? " · expired" : ""}
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
@@ -309,26 +318,28 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
                   <label className="text-sm font-medium xl:col-span-2">Title<input required name="title" defaultValue={event.title} className="focus-ring mt-1 min-h-10 w-full rounded border border-ink/15 bg-white px-3" /></label>
                   <label className="text-sm font-medium">Start<input required type="datetime-local" name="start_datetime" defaultValue={dateTimeInputValue(event.start_datetime)} className="focus-ring mt-1 min-h-10 w-full rounded border border-ink/15 bg-white px-3" /></label>
                   <label className="text-sm font-medium">End<input required type="datetime-local" name="end_datetime" defaultValue={dateTimeInputValue(event.end_datetime)} className="focus-ring mt-1 min-h-10 w-full rounded border border-ink/15 bg-white px-3" /></label>
-                  <label className="text-sm font-medium">Venue<input required name="venue_name" defaultValue={event.venue_name} className="focus-ring mt-1 min-h-10 w-full rounded border border-ink/15 bg-white px-3" /></label>
-                  <label className="text-sm font-medium">Address<input required name="address" defaultValue={event.address} className="focus-ring mt-1 min-h-10 w-full rounded border border-ink/15 bg-white px-3" /></label>
+                  <label className="text-sm font-medium">Venue<input name="venue_name" defaultValue={event.venue_name ?? ""} className="focus-ring mt-1 min-h-10 w-full rounded border border-ink/15 bg-white px-3" /></label>
+                  <label className="text-sm font-medium">Address<input name="address" defaultValue={event.address ?? ""} className="focus-ring mt-1 min-h-10 w-full rounded border border-ink/15 bg-white px-3" /></label>
                   <label className="text-sm font-medium">City<select required name="city_id" defaultValue={event.city_id} className="focus-ring mt-1 min-h-10 w-full rounded border border-ink/15 bg-white px-3">{cities.map((city) => <option key={city.id} value={city.id}>{city.name}</option>)}</select></label>
                   <label className="text-sm font-medium">Category<select required name="category_id" defaultValue={event.category_id} className="focus-ring mt-1 min-h-10 w-full rounded border border-ink/15 bg-white px-3">{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
-                  <label className="text-sm font-medium">Cost<input required name="price_text" defaultValue={event.price_text} className="focus-ring mt-1 min-h-10 w-full rounded border border-ink/15 bg-white px-3" /></label>
+                  <label className="text-sm font-medium">Cost<input name="price_text" defaultValue={event.price_text ?? ""} className="focus-ring mt-1 min-h-10 w-full rounded border border-ink/15 bg-white px-3" /></label>
                   <label className="text-sm font-medium">Status<select name="status" defaultValue={event.status} className="focus-ring mt-1 min-h-10 w-full rounded border border-ink/15 bg-white px-3"><option value="draft">Draft</option><option value="pending">Pending</option><option value="published">Published</option><option value="rejected">Rejected</option></select></label>
-                  <label className="text-sm font-medium">Organizer<input required name="organizer_name" defaultValue={event.organizer_name} className="focus-ring mt-1 min-h-10 w-full rounded border border-ink/15 bg-white px-3" /></label>
-                  <label className="text-sm font-medium">Organizer email<input required type="email" name="organizer_email" defaultValue={event.organizer_email} className="focus-ring mt-1 min-h-10 w-full rounded border border-ink/15 bg-white px-3" /></label>
+                  <label className="text-sm font-medium">Organizer<input name="organizer_name" defaultValue={event.organizer_name ?? ""} className="focus-ring mt-1 min-h-10 w-full rounded border border-ink/15 bg-white px-3" /></label>
+                  <label className="text-sm font-medium">Organizer email<input type="email" name="organizer_email" defaultValue={event.organizer_email ?? ""} className="focus-ring mt-1 min-h-10 w-full rounded border border-ink/15 bg-white px-3" /></label>
                   <label className="text-sm font-medium xl:col-span-2">Original event URL<input type="url" name="event_url" defaultValue={event.event_url ?? ""} className="focus-ring mt-1 min-h-10 w-full rounded border border-ink/15 bg-white px-3" /></label>
                   <div className="flex flex-wrap items-center gap-4 xl:col-span-2">
+                    <label className="flex min-h-10 items-center gap-2 text-sm font-medium"><input type="checkbox" name="has_start_time" value="1" defaultChecked={event.has_start_time} /> Start time found</label>
+                    <label className="flex min-h-10 items-center gap-2 text-sm font-medium"><input type="checkbox" name="has_end_time" value="1" defaultChecked={event.has_end_time} /> End time found</label>
                     <label className="flex min-h-10 items-center gap-2 text-sm font-medium"><input type="checkbox" name="is_free" value="1" defaultChecked={event.is_free} /> Free</label>
                     <label className="flex min-h-10 items-center gap-2 text-sm font-medium"><input type="checkbox" name="is_family_friendly" value="1" defaultChecked={event.is_family_friendly} /> Family-friendly</label>
                     <label className="flex min-h-10 items-center gap-2 text-sm font-medium"><input type="checkbox" name="is_featured" value="1" defaultChecked={event.is_featured} /> Featured</label>
                   </div>
-                  <label className="text-sm font-medium xl:col-span-4">Description<textarea required name="description" rows={4} defaultValue={event.description} className="focus-ring mt-1 w-full rounded border border-ink/15 bg-white px-3 py-2" /></label>
+                  <label className="text-sm font-medium xl:col-span-4">Description<textarea name="description" rows={4} defaultValue={event.description} className="focus-ring mt-1 w-full rounded border border-ink/15 bg-white px-3 py-2" /></label>
                 </div>
               </form>
             </article>
           ))}
-          {!events.length && <p className="rounded bg-paper p-4 text-ink/60">No event cards yet. Run the bot or submit an event to create pending cards.</p>}
+          {!reviewEvents.length && <p className="rounded bg-paper p-4 text-ink/60">No cards need review right now. Approved future events are already live on the site.</p>}
         </div>
       </div>
     </PageShell>
